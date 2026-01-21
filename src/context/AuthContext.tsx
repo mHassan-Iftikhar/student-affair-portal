@@ -45,6 +45,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         try {
@@ -67,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setToken(response.data.token);
               localStorage.setItem('adminToken', response.data.token);
             }
-          } catch (error) {
+          } catch {
             // Backend verification failed, but continue with Firebase auth (silently)
             // This is expected when backend is not running
           }
@@ -88,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return unsubscribe;
-  }, []);
+  }, [isDevelopment]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -104,6 +109,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Sign in with Firebase
+      if (!auth) {
+        throw new Error('Firebase authentication is not initialized');
+      }
+      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
       if (userCredential.user) {
@@ -189,6 +198,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           { uid: user.uid, email: user.email || 'unknown' },
           { timestamp: new Date().toISOString() }
         );
+      }
+
+      if (!auth) {
+        // If auth is not initialized, just clear local state
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('adminToken');
+        document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        toast.success('Logged out successfully');
+        window.location.href = '/login';
+        return;
       }
 
       await signOut(auth);

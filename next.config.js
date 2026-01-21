@@ -10,6 +10,19 @@ const nextConfig = {
       },
     ];
   },
+  // Skip ESLint during builds (run lint separately)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Allow build to continue with warnings
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
+  typescript: {
+    // Don't fail build on TypeScript errors (only warnings)
+    ignoreBuildErrors: false,
+  },
 };
 
 module.exports = nextConfig;

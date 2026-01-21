@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Send, Users, Radio, RefreshCw } from 'lucide-react';
-import { Notification, User } from '../../../types';
+import { Send, Radio, RefreshCw } from 'lucide-react';
+import { User } from '../../../types';
 import Table from '../../../components/UI/Table';
 import LoadingSpinner from '../../../components/UI/LoadingSpinner';
 import { useForm } from 'react-hook-form';
@@ -120,7 +120,8 @@ const Notifications: React.FC = () => {
         title: data.title,
         message: data.message,
         targetUsers: targetUsers,
-        sentBy: user?.email || 'Admin',
+        sentBy: user?.uid || 'admin',
+        sentByEmail: user?.email || 'admin@example.com',
       });
 
       // Log the notification send action
@@ -138,9 +139,10 @@ const Notifications: React.FC = () => {
       if (!isLiveMode) {
         fetchNotifications();
       }
-    } catch (error) {
+    } catch (err) {
+      const error = err as Error;
       console.error('Failed to send notification:', error);
-      toast.error('Failed to send notification: ' + (error as Error).message);
+      toast.error('Failed to send notification: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }

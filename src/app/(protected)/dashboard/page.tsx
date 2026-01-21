@@ -28,15 +28,19 @@ const Dashboard: React.FC = () => {
 
       // Get recent activity from audit logs
       const recentActivity = logs.slice(0, 10).map((log: any) => ({
-        _id: log.id || '',
+        _id: log.id || log._id || '',
+        adminId: log.adminId || '',
+        adminEmail: log.adminEmail || 'Unknown',
         action: log.action || 'UNKNOWN',
         resource: log.resource || 'UNKNOWN',
-        adminEmail: log.adminEmail || 'Unknown',
+        resourceId: log.resourceId || undefined,
+        details: log.details || {},
         timestamp: log.timestamp?.toDate?.() 
           ? log.timestamp.toDate().toISOString() 
           : log.createdAt?.toDate?.()
             ? log.createdAt.toDate().toISOString()
             : new Date().toISOString(),
+        ipAddress: log.ipAddress || undefined,
       }));
 
       // Calculate stats

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldOff, User, Upload, Image as ImageIcon } from 'lucide-react';
+import { Shield, ShieldOff, User, Upload } from 'lucide-react';
 import { User as UserType } from '../../../types';
 import Table from '../../../components/UI/Table';
 import LoadingSpinner from '../../../components/UI/LoadingSpinner';
@@ -12,8 +12,6 @@ import {
   validateFileType,
   validateFileSize,
   formatFileSize,
-  Base64Data,
-  base64ToDataURL,
 } from '../../../utils/base64Utils';
 import {
   updateUserProfilePicture,
@@ -40,7 +38,15 @@ const Users: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const firestoreUsers = await getDocuments('users');
-      setUsers(firestoreUsers.map(user => ({ ...user, _id: user.id })));
+      setUsers(firestoreUsers.map((user: any) => ({
+        _id: user.id || user._id || '',
+        email: user.email || '',
+        displayName: user.displayName || user.name || 'Unknown',
+        photoURL: user.photoURL || user.photo || undefined,
+        isBlocked: user.isBlocked || false,
+        createdAt: user.createdAt?.toDate?.()?.toISOString() || user.createdAt || new Date().toISOString(),
+        lastLoginAt: user.lastLoginAt?.toDate?.()?.toISOString() || user.lastLoginAt || undefined,
+      })));
     } catch (error) {
       console.error('Failed to fetch users:', error);
       toast.error('Failed to load users');
@@ -123,14 +129,14 @@ const Users: React.FC = () => {
     setUploading(true);
     try {
       const photoData = await fileToBase64(selectedFile);
-      const userId = selectedUser._id || selectedUser.id || '';
+      const userId = selectedUser._id || '';
       await updateUserProfilePicture(userId, photoData);
       
       // Log profile picture update
       if (currentUser) {
         await logUpdate(currentUser, 'users', userId, {
           action: 'Profile picture updated',
-          targetUser: selectedUser.email || selectedUser.name,
+          targetUser: selectedUser.email || selectedUser.displayName,
           fileName: selectedFile.name,
           fileSize: selectedFile.size
         });

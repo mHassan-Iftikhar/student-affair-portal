@@ -69,11 +69,15 @@ const AcademicResources: React.FC = () => {
       
       if (firestoreResources && firestoreResources.length > 0) {
         setResources(firestoreResources.map(r => ({
-          ...r,
-          _id: r.id,
+          _id: r.id || r._id || '',
+          title: r.title || '',
+          description: r.description || '',
+          category: r.category || '',
+          uploadedBy: r.uploadedBy || '',
+          createdAt: r.createdAt?.toDate?.()?.toISOString() || r.createdAt || new Date().toISOString(),
           fileName: r.files?.resource?.fileName || r.fileName || '',
           fileType: r.files?.resource?.mimeType || r.fileType || '',
-        })));
+        } as Resource)));
       } else {
         // Mock data for demo
         setResources([

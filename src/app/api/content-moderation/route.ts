@@ -458,7 +458,7 @@ async function moderateContent(
   topic: string,
   content: string,
   title?: string,
-  imageUrl?: string
+  _imageUrl?: string
 ): Promise<ModerationResponse> {
   // Step 1: Check for hate speech using Hugging Face API (free) with rule-based fallback
   const hateSpeechResult = await moderateWithHuggingFace(content, title);
@@ -528,8 +528,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to get topic-specific context
-function getTopicContext(topic: string): string {
+// Helper function to get topic-specific context (currently unused but kept for future use)
+function _getTopicContext(topic: string): string {
   const topicLower = topic.toLowerCase();
   
   if (topicLower.includes('lost') || topicLower.includes('found') || topicLower === 'lostnfound') {

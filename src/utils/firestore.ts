@@ -317,7 +317,7 @@ export const addLostAndFoundItem = async (data: {
     files.image = data.imageData;
   }
 
-  const { imageData, ...restData } = data;
+  const { imageData: _imageData, ...restData } = data;
   return await addDocumentWithBase64('lostNfound', restData, files);
 };
 
@@ -337,7 +337,7 @@ export const addEvent = async (data: {
     files.video = data.videoData;
   }
 
-  const { imageData, videoData, ...restData } = data;
+  const { imageData: _imageData, videoData: _videoData, ...restData } = data;
   return await addDocumentWithBase64('events', restData, files);
 };
 
@@ -353,7 +353,7 @@ export const addGroup = async (data: {
     files.image = data.imageData;
   }
 
-  const { imageData, ...restData } = data;
+  const { imageData: _imageData, ...restData } = data;
   return await addDocumentWithBase64('groups', restData, files);
 };
 
@@ -370,7 +370,7 @@ export const addUserWithProfilePicture = async (data: {
     files.profilePicture = data.photoData;
   }
 
-  const { photoData, ...restData } = data;
+  const { photoData: _photoData, ...restData } = data;
   return await addDocumentWithBase64('users', restData, files);
 };
 
@@ -415,7 +415,7 @@ export const addAuditLog = async (data: AuditLogEntry): Promise<string> => {
     files.screenshot = data.screenshotData;
   }
 
-  const { screenshotData, ...logData } = data;
+  const { screenshotData: _screenshotData, ...logData } = data;
 
   return await addDocumentWithBase64('audit_logs', {
     ...logData,
@@ -522,7 +522,7 @@ export const addNotification = async (data: NotificationEntry): Promise<string> 
     files.image = data.imageData;
   }
 
-  const { imageData, expiresAt, ...notificationData } = data;
+  const { imageData: _imageData, expiresAt, ...notificationData } = data;
 
   return await addDocumentWithBase64('notifications', {
     ...notificationData,

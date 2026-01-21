@@ -169,7 +169,7 @@ export const captureScreenshot = async (): Promise<File | null> => {
   }
 };
 
-export default {
+const auditLoggerExports = {
   logAction,
   logCreate,
   logUpdate,
@@ -181,3 +181,5 @@ export default {
   withAuditLog,
   captureScreenshot,
 };
+
+export default auditLoggerExports;

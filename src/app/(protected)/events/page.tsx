@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, Upload, Image as ImageIcon, Video } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Upload, Video } from 'lucide-react';
 import { Story } from '../../../types';
 import Table from '../../../components/UI/Table';
 import Modal from '../../../components/UI/Modal';
@@ -10,7 +10,6 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
   fileToBase64,
-  base64ToDataURL,
   validateFileType,
   validateFileSize,
   formatFileSize,
@@ -48,7 +47,16 @@ const Stories: React.FC = () => {
   const fetchStories = async () => {
     try {
       const firestoreStories = await getDocuments('events');
-      setStories(firestoreStories.map(story => ({ ...story, _id: story.id })));
+      setStories(firestoreStories.map((story: any) => ({
+        _id: story.id || story._id || story._id || '',
+        title: story.title || '',
+        content: story.content || '',
+        imageUrl: story.imageUrl || story.files?.image?.dataURL || undefined,
+        videoUrl: story.videoUrl || story.files?.video?.dataURL || undefined,
+        isPublished: story.isPublished !== false,
+        createdAt: story.createdAt?.toDate?.()?.toISOString() || story.createdAt || new Date().toISOString(),
+        updatedAt: story.updatedAt?.toDate?.()?.toISOString() || story.updatedAt || new Date().toISOString(),
+      })));
     } catch (error) {
       console.error('Failed to fetch stories:', error);
       toast.error('Failed to load stories');
@@ -199,7 +207,7 @@ const Stories: React.FC = () => {
 
         await updateDocumentWithBase64(
           'events',
-          editingStory._id || editingStory.id || '',
+          editingStory._id || '',
           updateData,
           Object.keys(files).length > 0 ? files : undefined
         );
@@ -209,7 +217,7 @@ const Stories: React.FC = () => {
           await logUpdate(
             { uid: user.uid, email: user.email || 'unknown' },
             'STORIES',
-            editingStory._id || editingStory.id || '',
+            editingStory._id || '',
             { title: data.title, isPublished: data.isPublished }
           );
         }

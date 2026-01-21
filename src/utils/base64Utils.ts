@@ -361,7 +361,7 @@ export const createThumbnail = (
   });
 };
 
-export default {
+const base64Utils = {
   fileToBase64,
   blobToBase64,
   filesToBase64,
@@ -381,3 +381,5 @@ export default {
   reassembleBase64Chunks,
   createThumbnail,
 };
+
+export default base64Utils;

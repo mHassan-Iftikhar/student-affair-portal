@@ -48,7 +48,7 @@ const Login: React.FC = () => {
     try {
       await login(data.email, data.password);
       router.push('/dashboard');
-    } catch (error) {
+    } catch {
       // Error handling is done in the AuthContext
     } finally {
       setIsSubmitting(false);

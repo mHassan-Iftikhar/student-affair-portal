@@ -26,7 +26,8 @@ import { Base64Data } from './base64Utils';
  */
 export const getDocument = async (collectionName: string, documentId: string): Promise<DocumentData | null> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    console.warn('Firestore is not initialized. Returning null.');
+    return null;
   }
 
   const docRef = doc(db, collectionName, documentId);
@@ -47,7 +48,8 @@ export const getDocuments = async (
   constraints?: QueryConstraint[]
 ): Promise<DocumentData[]> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    console.warn('Firestore is not initialized. Returning empty array.');
+    return [];
   }
 
   const collectionRef = collection(db, collectionName);
@@ -65,7 +67,7 @@ export const getDocuments = async (
  */
 export const addDocument = async (collectionName: string, data: DocumentData): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
   }
 
   const docRef = await addDoc(collection(db, collectionName), {
@@ -86,7 +88,7 @@ export const updateDocument = async (
   data: Partial<DocumentData>
 ): Promise<void> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
   }
 
   const docRef = doc(db, collectionName, documentId);
@@ -101,7 +103,7 @@ export const updateDocument = async (
  */
 export const deleteDocument = async (collectionName: string, documentId: string): Promise<void> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
   }
 
   const docRef = doc(db, collectionName, documentId);
@@ -118,7 +120,7 @@ export const batchWrite = async (operations: Array<{
   data?: DocumentData;
 }>): Promise<void> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
   }
 
   const batch = writeBatch(db);
@@ -146,7 +148,9 @@ export const subscribeToDocument = (
   callback: (data: DocumentData | null) => void
 ): Unsubscribe => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    console.warn('Firestore is not initialized. Returning no-op unsubscribe function.');
+    callback(null);
+    return () => {}; // Return empty unsubscribe function
   }
 
   const docRef = doc(db, collectionName, documentId);
@@ -169,7 +173,10 @@ export const subscribeToCollection = (
   constraints?: QueryConstraint[]
 ): Unsubscribe => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    console.warn('Firestore is not initialized. Returning no-op unsubscribe function.');
+    // Return a no-op function that can be called safely
+    callback([]);
+    return () => {}; // Return empty unsubscribe function
   }
 
   const collectionRef = collection(db, collectionName);
@@ -215,7 +222,7 @@ export const addDocumentWithBase64 = async (
   base64Files?: { [key: string]: Base64Data }
 ): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
   }
 
   const documentData = {
@@ -400,7 +407,7 @@ export interface AuditLogEntry {
  */
 export const addAuditLog = async (data: AuditLogEntry): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
   }
 
   const files: { [key: string]: Base64Data } = {};
@@ -428,7 +435,8 @@ export const getAuditLogs = async (filters?: {
   limit?: number;
 }): Promise<DocumentData[]> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    console.warn('Firestore is not initialized. Returning empty array.');
+    return [];
   }
 
   const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc')];
@@ -506,7 +514,7 @@ export interface NotificationEntry {
  */
 export const addNotification = async (data: NotificationEntry): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
   }
 
   const files: { [key: string]: Base64Data } = {};
@@ -534,7 +542,8 @@ export const getNotifications = async (filters?: {
   limit?: number;
 }): Promise<DocumentData[]> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    console.warn('Firestore is not initialized. Returning empty array.');
+    return [];
   }
 
   const constraints: QueryConstraint[] = [orderBy('sentAt', 'desc')];

@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Package, 
@@ -15,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const Sidebar: React.FC = () => {
   const { logout, user } = useAuth();
+  const pathname = usePathname();
 
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -61,22 +65,23 @@ const Sidebar: React.FC = () => {
       
       {/* Navigation - scrollable */}
       <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+        {navItems.map((item) => {
+          const isActive = pathname === item.to;
+          return (
+            <Link
+              key={item.to}
+              href={item.to}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              }`
-            }
-          >
-            <item.icon className="h-5 w-5 flex-shrink-0" />
-            <span className="font-medium">{item.label}</span>
-          </NavLink>
-        ))}
+              }`}
+            >
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <span className="font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Logout Button - fixed at bottom */}

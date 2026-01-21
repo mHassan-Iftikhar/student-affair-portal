@@ -1,9 +1,10 @@
+'use client';
+
 import React from 'react';
-import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const Layout: React.FC = () => {
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Sidebar />
@@ -11,7 +12,7 @@ const Layout: React.FC = () => {
         <Header />
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-7xl mx-auto">
-            <Outlet />
+            {children}
           </div>
         </main>
       </div>

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { auth } from '../config/firebase';
@@ -22,7 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   
   // Development mode bypass
-  const isDevelopment = import.meta.env.DEV && !import.meta.env.VITE_FIREBASE_API_KEY;
+  const isDevelopment = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
   useEffect(() => {
     // Development mode - auto login
@@ -37,6 +39,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(mockUser);
       setToken('dev-token-123');
       localStorage.setItem('adminToken', 'dev-token-123');
+      // Set cookie for middleware
+      document.cookie = 'adminToken=dev-token-123; path=/; max-age=86400';
       setLoading(false);
       return;
     }
@@ -72,11 +76,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setToken(null);
           localStorage.removeItem('adminToken');
+          document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         }
       } else {
         setUser(null);
         setToken(null);
         localStorage.removeItem('adminToken');
+        document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       }
       setLoading(false);
     });
@@ -170,7 +176,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setToken(null);
         localStorage.removeItem('adminToken');
+        // Clear cookie
+        document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         toast.success('Logged out successfully');
+        window.location.href = '/login';
         return;
       }
 
@@ -183,7 +192,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       await signOut(auth);
+      // Clear cookie
+      document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       toast.success('Logged out successfully');
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
     }

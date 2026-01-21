@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Eye, Upload, Image as ImageIcon, Video } from 'lucide-react';
-import { Story } from '../../../../types';
-import api from '../../../../utils/api';
-import Table from '../../../../components/UI/Table';
-import Modal from '../../../../components/UI/Modal';
-import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
+import { Story } from '../../../types';
+import Table from '../../../components/UI/Table';
+import Modal from '../../../components/UI/Modal';
+import LoadingSpinner from '../../../components/UI/LoadingSpinner';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
@@ -18,15 +17,15 @@ import {
   Base64Data,
   isImageFile,
   isVideoFile,
-} from '../../../../utils/base64Utils';
+} from '../../../utils/base64Utils';
 import {
   addEvent,
   getDocuments,
   updateDocumentWithBase64,
   deleteDocument,
-} from '../../../../utils/firestore';
-import { logCreate, logUpdate, logDelete } from '../../../../utils/auditLogger';
-import { useAuth } from '../../../../context/AuthContext';
+} from '../../../utils/firestore';
+import { logCreate, logUpdate, logDelete } from '../../../utils/auditLogger';
+import { useAuth } from '../../../context/AuthContext';
 
 const Stories: React.FC = () => {
   const { user } = useAuth();
@@ -48,57 +47,11 @@ const Stories: React.FC = () => {
 
   const fetchStories = async () => {
     try {
-      // Try Firestore first
       const firestoreStories = await getDocuments('events');
-      if (firestoreStories && firestoreStories.length > 0) {
-        setStories(firestoreStories.map(story => ({ ...story, _id: story.id })));
-        setLoading(false);
-        return;
-      }
-
-      // Try API
-      const response = await api.get('/stories', {
-        headers: { 'X-Silent-Error': 'true' }
-      });
-      console.log('API response:', response.data);
-      setStories(response.data);
+      setStories(firestoreStories.map(story => ({ ...story, _id: story.id })));
     } catch (error) {
-      // Backend not available - use mock data
-      console.log('Backend not available, using mock data');
-      const mockData = [
-        {
-          _id: '1',
-          title: 'Tech Conference 2026',
-          content: 'Annual technology conference featuring latest innovations in AI and machine learning',
-          imageUrl: '',
-          videoUrl: '',
-          isPublished: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          _id: '2',
-          title: 'Student Orientation Day',
-          content: 'Welcome new students to campus with orientation activities and campus tours',
-          imageUrl: '',
-          videoUrl: '',
-          isPublished: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          _id: '3',
-          title: 'Art Exhibition',
-          content: 'Student artwork showcase featuring paintings, sculptures, and digital art',
-          imageUrl: '',
-          videoUrl: '',
-          isPublished: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ];
-      console.log('Setting mock stories:', mockData);
-      setStories(mockData);
+      console.error('Failed to fetch stories:', error);
+      toast.error('Failed to load stories');
     } finally {
       setLoading(false);
     }
@@ -194,7 +147,6 @@ const Stories: React.FC = () => {
     if (!confirm('Are you sure you want to delete this story?')) return;
 
     try {
-      // Try Firestore delete first
       await deleteDocument('events', storyId);
       
       // Log the delete action
@@ -209,16 +161,9 @@ const Stories: React.FC = () => {
       
       toast.success('Story deleted successfully');
       fetchStories();
-    } catch (firestoreError) {
-      // Try API delete
-      try {
-        await api.delete(`/stories/${storyId}`);
-        setStories(stories.filter(story => story._id !== storyId));
-        toast.success('Story deleted successfully');
-      } catch (error) {
-        console.error('Failed to delete story:', error);
-        toast.error('Failed to delete story');
-      }
+    } catch (error) {
+      console.error('Failed to delete story:', error);
+      toast.error('Failed to delete story');
     }
   };
 

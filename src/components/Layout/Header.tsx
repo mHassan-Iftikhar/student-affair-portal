@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Bell, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';

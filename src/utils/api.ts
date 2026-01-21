@@ -1,7 +1,7 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -29,7 +29,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     // Skip auth redirect in development mode
-    const isDevelopment = import.meta.env.DEV && !import.meta.env.VITE_FIREBASE_API_KEY;
+    const isDevelopment = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
     
     // Check if this error should be silently handled
     const isSilent = error.config?.headers?.['X-Silent-Error'] === 'true';

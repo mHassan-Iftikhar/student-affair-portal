@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "778891633870",
+    "project_id": "uni-tribe",
+    "storage_bucket": "uni-tribe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:778891633870:android:b902b65387763d73469c9f",
+        "android_client_info": {
+          "package_name": "com.example.uni_tribe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "778891633870-ljgbehio747l24v8egde792pebdu9qg9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.uni_tribe",
+            "certificate_hash": "cac827f28cf005589c010fa7b19a835d0ec263c6"
+          }
+        },
+        {
+          "client_id": "778891633870-4tgopb7l69jkk78c477k1a0cq902ognq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAuAVaXcSukJBSoFsxLkBygVkOEtEj-WFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "778891633870-4tgopb7l69jkk78c477k1a0cq902ognq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -12,11 +12,17 @@ import {
   BookOpen,
   Activity,
   LogOut,
-  Shield
+  Shield,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { logout, user } = useAuth();
   const pathname = usePathname();
 
@@ -32,17 +38,31 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white w-64 min-h-screen flex flex-col shadow-2xl">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white shadow-2xl transition-transform duration-200 lg:static lg:translate-x-0 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       {/* Header */}
       <div className="p-6 border-b border-gray-700">
-        <div className="flex items-center space-x-3">
-          <div className="bg-blue-600 rounded-lg p-2">
-            <Shield className="h-6 w-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-600 rounded-lg p-2">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Admin Portal</h1>
+              <p className="text-xs text-gray-400">Management System</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Admin Portal</h1>
-            <p className="text-xs text-gray-400">Management System</p>
-          </div>
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-300 hover:bg-gray-800 hover:text-white lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       </div>
 
@@ -71,6 +91,7 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.to}
               href={item.to}
+              onClick={onClose}
               className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                 isActive
                   ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
@@ -94,7 +115,7 @@ const Sidebar: React.FC = () => {
           <span className="font-medium">Logout</span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 };
 

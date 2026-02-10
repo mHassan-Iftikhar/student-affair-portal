@@ -88,7 +88,7 @@ const AuditLogPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-3">
           <div className="bg-blue-100 text-blue-600 p-2 rounded-lg">
             <Activity className="h-5 w-5" />

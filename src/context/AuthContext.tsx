@@ -100,6 +100,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Development mode bypass
       if (isDevelopment) {
         if (email === 'admin@dev.local' && password === 'admin123') {
+          setUser({
+            uid: 'dev-admin-123',
+            email: 'admin@dev.local',
+            displayName: 'Dev Admin',
+            photoURL: null,
+          } as User);
+          setToken('dev-token-123');
+          localStorage.setItem('adminToken', 'dev-token-123');
+          document.cookie = 'adminToken=dev-token-123; path=/; max-age=86400';
           toast.success('Development login successful');
           return;
         } else {
@@ -116,6 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
       if (userCredential.user) {
+        const idToken = await userCredential.user.getIdToken();
+        setUser(userCredential.user);
+        setToken(idToken);
+        localStorage.setItem('adminToken', idToken);
+        document.cookie = `adminToken=${idToken}; path=/; max-age=86400`;
         // Log the login action to Firebase audit logs
         await logLogin(
           { uid: userCredential.user.uid, email: userCredential.user.email || email },

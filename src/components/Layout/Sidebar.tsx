@@ -27,7 +27,7 @@ const Sidebar: React.FC = () => {
     { to: '/academic-resources', icon: BookOpen, label: 'Academic Resources' },
     { to: '/users', icon: Users, label: 'Users' },
     { to: '/notifications', icon: Bell, label: 'Notification' },
-    { to: '/logs', icon: Activity, label: 'Audit Log' },
+    { to: '/log', icon: Activity, label: 'Audit Log' },
     { to: '/content-moderation-test', icon: Shield, label: 'Content AI Test' },
   ];
 

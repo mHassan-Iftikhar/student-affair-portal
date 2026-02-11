@@ -1,13 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, Upload, Image as ImageIcon } from 'lucide-react';
-import { Item } from '../../../types';
-import Table from '../../../components/UI/Table';
-import Modal from '../../../components/UI/Modal';
-import LoadingSpinner from '../../../components/UI/LoadingSpinner';
-import { useForm } from 'react-hook-form';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Upload,
+  Image as ImageIcon,
+} from "lucide-react";
+import { Item } from "../../../types";
+import Table from "../../../components/UI/Table";
+import Modal from "../../../components/UI/Modal";
+import LoadingSpinner from "../../../components/UI/LoadingSpinner";
+import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
 import {
   fileToBase64,
   base64ToDataURL,
@@ -15,15 +22,15 @@ import {
   validateFileSize,
   formatFileSize,
   Base64Data,
-} from '../../../utils/base64Utils';
+} from "../../../utils/base64Utils";
 import {
   addLostAndFoundItem,
   getDocuments,
   updateDocumentWithBase64,
   deleteDocument,
-} from '../../../utils/firestore';
-import { logCreate, logUpdate, logDelete } from '../../../utils/auditLogger';
-import { useAuth } from '../../../context/AuthContext';
+} from "../../../utils/firestore";
+import { logCreate, logUpdate, logDelete } from "../../../utils/auditLogger";
+import { useAuth } from "../../../context/AuthContext";
 
 const Items: React.FC = () => {
   const { user } = useAuth();
@@ -33,10 +40,10 @@ const Items: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [customCategory, setCustomCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [customCategory, setCustomCategory] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string>("");
 
   const { register, handleSubmit, reset, setValue } = useForm<Partial<Item>>();
 
@@ -46,23 +53,23 @@ const Items: React.FC = () => {
 
   const fetchItems = async () => {
     try {
-      const firestoreItems = await getDocuments('lostNfound');
-      const mappedItems = firestoreItems.map(item => ({
-        _id: item.id || '',
-        id: item.id || '',
-        title: item.title || '',
-        description: item.description || '',
-        price: typeof item.price === 'number' ? item.price : 0,
-        category: item.category || '',
-        imageUrl: item.imageUrl || '',
+      const firestoreItems = await getDocuments("lostNfound");
+      const mappedItems = firestoreItems.map((item) => ({
+        _id: item.id || "",
+        id: item.id || "",
+        title: item.title || "",
+        description: item.description || "",
+        price: typeof item.price === "number" ? item.price : 0,
+        category: item.category || "",
+        imageUrl: item.imageUrl || "",
         isActive: item.isActive !== false,
         createdAt: item.createdAt || new Date().toISOString(),
         updatedAt: item.updatedAt || new Date().toISOString(),
       }));
       setItems(mappedItems as Item[]);
     } catch (error) {
-      console.error('Failed to fetch items:', error);
-      setError('Failed to load items. Please try again.');
+      console.error("Failed to fetch items:", error);
+      setError("Failed to load items. Please try again.");
       setItems([]);
     } finally {
       setLoading(false);
@@ -72,53 +79,64 @@ const Items: React.FC = () => {
   const handleAdd = () => {
     setEditingItem(null);
     reset();
-    setSelectedCategory('');
-    setCustomCategory('');
+    setSelectedCategory("");
+    setCustomCategory("");
     setSelectedFile(null);
-    setPreviewUrl('');
+    setPreviewUrl("");
     setIsModalOpen(true);
   };
 
   const handleEdit = (item: Item) => {
     setEditingItem(item);
-    setValue('title', item.title);
-    setValue('description', item.description);
-    setValue('price', item.price);
-    setValue('category', item.category);
-    setValue('imageUrl', item.imageUrl);
-    setValue('isActive', item.isActive);
-    
+    setValue("title", item.title);
+    setValue("description", item.description);
+    setValue("price", item.price);
+    setValue("category", item.category);
+    setValue("imageUrl", item.imageUrl);
+    setValue("isActive", item.isActive);
+
     // Check if category is a predefined one or custom
-    const predefinedCategories = ['electronics', 'clothing', 'home', 'sports', 'books'];
+    const predefinedCategories = [
+      "electronics",
+      "clothing",
+      "home",
+      "sports",
+      "books",
+    ];
     if (predefinedCategories.includes(item.category.toLowerCase())) {
       setSelectedCategory(item.category);
-      setCustomCategory('');
+      setCustomCategory("");
     } else {
-      setSelectedCategory('other');
+      setSelectedCategory("other");
       setCustomCategory(item.category);
     }
     setSelectedFile(null);
-    setPreviewUrl('');
+    setPreviewUrl("");
     setIsModalOpen(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
       const typeValidation = validateFileType(file, allowedTypes);
-      
+
       if (!typeValidation.valid) {
-        toast.error(typeValidation.error || 'Invalid file type');
-        e.target.value = '';
+        toast.error(typeValidation.error || "Invalid file type");
+        e.target.value = "";
         return;
       }
 
       const maxSize = 10; // 10MB
       const sizeValidation = validateFileSize(file, maxSize);
       if (!sizeValidation.valid) {
-        toast.error(sizeValidation.error || 'File too large');
-        e.target.value = '';
+        toast.error(sizeValidation.error || "File too large");
+        e.target.value = "";
         return;
       }
 
@@ -129,32 +147,32 @@ const Items: React.FC = () => {
         setPreviewUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
-      
+
       toast.success(`Image selected (${formatFileSize(file.size)})`);
     }
   };
 
   const handleDelete = async (itemId: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    if (!confirm("Are you sure you want to delete this item?")) return;
 
     try {
-      await deleteDocument('lostNfound', itemId);
-      
+      await deleteDocument("lostNfound", itemId);
+
       // Log the delete action
       if (user) {
         await logDelete(
-          { uid: user.uid, email: user.email || 'unknown' },
-          'ITEMS',
+          { uid: user.uid, email: user.email || "unknown" },
+          "ITEMS",
           itemId,
-          { action: 'deleted_lost_found_item' }
+          { action: "deleted_lost_found_item" },
         );
       }
-      
-      toast.success('Item deleted successfully');
+
+      toast.success("Item deleted successfully");
       fetchItems();
     } catch (error) {
-      console.error('Failed to delete item:', error);
-      toast.error('Failed to delete item');
+      console.error("Failed to delete item:", error);
+      toast.error("Failed to delete item");
     }
   };
 
@@ -162,13 +180,56 @@ const Items: React.FC = () => {
     setIsSubmitting(true);
     try {
       // Use custom category if "other" is selected
-      const finalCategory = selectedCategory === 'other' ? customCategory : data.category;
-      
+      const finalCategory =
+        selectedCategory === "other" ? customCategory : data.category;
+
       let imageData: Base64Data | undefined;
       if (selectedFile) {
         imageData = await fileToBase64(selectedFile);
       }
-      
+
+      const imageUrlToMod =
+        imageData && imageData.mimeType.startsWith("image/")
+          ? base64ToDataURL(imageData)
+          : data.imageUrl;
+
+      // Integrate AI Content Moderation
+      if (imageUrlToMod || data.description || data.title) {
+        const moderationToastId = toast.loading("AI is verifying content...");
+        try {
+          const modResponse = await fetch("/api/content-moderation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topic: finalCategory || "lostnfound",
+              content: data.description,
+              title: data.title,
+              imageUrl: imageUrlToMod,
+            }),
+          });
+
+          if (!modResponse.ok) {
+            throw new Error("AI Moderation service unavailable");
+          }
+
+          const modResult = await modResponse.json();
+          toast.dismiss(moderationToastId);
+
+          if (!modResult.isAuthentic) {
+            toast.error(`Content Flagged: ${modResult.reason}`, {
+              duration: 6000,
+            });
+            setIsSubmitting(false);
+            return; // Stop submission
+          }
+        } catch (modError) {
+          console.error("Moderation error:", modError);
+          toast.dismiss(moderationToastId);
+          // We can decide to block or allow on AI failure. Let's allow but log a warning.
+          toast.error("AI check failed, proceeding with caution...");
+        }
+      }
+
       if (editingItem) {
         // Update using Firestore
         const updateData: any = {
@@ -185,58 +246,58 @@ const Items: React.FC = () => {
         }
 
         await updateDocumentWithBase64(
-          'lostNfound',
-          editingItem._id || editingItem.id || '',
+          "lostNfound",
+          editingItem._id || editingItem.id || "",
           updateData,
-          Object.keys(files).length > 0 ? files : undefined
+          Object.keys(files).length > 0 ? files : undefined,
         );
-        
+
         // Log the update action
         if (user) {
           await logUpdate(
-            { uid: user.uid, email: user.email || 'unknown' },
-            'ITEMS',
-            editingItem._id || editingItem.id || '',
-            { title: data.title, category: finalCategory }
+            { uid: user.uid, email: user.email || "unknown" },
+            "ITEMS",
+            editingItem._id || editingItem.id || "",
+            { title: data.title, category: finalCategory },
           );
         }
-        
-        toast.success('Item updated successfully');
+
+        toast.success("Item updated successfully");
         fetchItems();
       } else {
         // Create new item using Firestore
         const newItemId = await addLostAndFoundItem({
-          title: data.title || '',
-          description: data.description || '',
+          title: data.title || "",
+          description: data.description || "",
           price: data.price || 0,
-          category: finalCategory || '',
+          category: finalCategory || "",
           isActive: true,
           imageData,
         });
-        
+
         // Log the create action
         if (user) {
           await logCreate(
-            { uid: user.uid, email: user.email || 'unknown' },
-            'ITEMS',
+            { uid: user.uid, email: user.email || "unknown" },
+            "ITEMS",
             newItemId,
-            { title: data.title, category: finalCategory }
+            { title: data.title, category: finalCategory },
           );
         }
-        
-        toast.success('Item created successfully');
+
+        toast.success("Item created successfully");
         fetchItems();
       }
-      
+
       setIsModalOpen(false);
       reset();
-      setSelectedCategory('');
-      setCustomCategory('');
+      setSelectedCategory("");
+      setCustomCategory("");
       setSelectedFile(null);
-      setPreviewUrl('');
+      setPreviewUrl("");
     } catch (error) {
-      console.error('Failed to save item:', error);
-      toast.error('Failed to save item: ' + (error as Error).message);
+      console.error("Failed to save item:", error);
+      toast.error("Failed to save item: " + (error as Error).message);
     } finally {
       setIsSubmitting(false);
     }
@@ -244,35 +305,39 @@ const Items: React.FC = () => {
 
   const columns = [
     {
-      key: 'title',
-      header: 'Title',
+      key: "title",
+      header: "Title",
       sortable: true,
     },
     {
-      key: 'category',
-      header: 'Category',
+      key: "category",
+      header: "Category",
       sortable: true,
     },
     {
-      key: 'price',
-      header: 'Price',
+      key: "price",
+      header: "Price",
       render: (item: Item) => `$${(item.price ?? 0).toFixed(2)}`,
       sortable: true,
     },
     {
-      key: 'isActive',
-      header: 'Status',
+      key: "isActive",
+      header: "Status",
       render: (item: Item) => (
-        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-          item.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {item.isActive !== false ? 'Active' : 'Inactive'}
+        <span
+          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+            item.isActive !== false
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          }`}
+        >
+          {item.isActive !== false ? "Active" : "Inactive"}
         </span>
       ),
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       render: (item: Item) => (
         <div className="flex space-x-2">
           <button
@@ -338,7 +403,7 @@ const Items: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Edit Item' : 'Add New Item'}
+        title={editingItem ? "Edit Item" : "Add New Item"}
         size="lg"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -347,7 +412,7 @@ const Items: React.FC = () => {
               Title
             </label>
             <input
-              {...register('title', { required: true })}
+              {...register("title", { required: true })}
               type="text"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -358,7 +423,7 @@ const Items: React.FC = () => {
               Description
             </label>
             <textarea
-              {...register('description', { required: true })}
+              {...register("description", { required: true })}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -370,7 +435,7 @@ const Items: React.FC = () => {
                 Price
               </label>
               <input
-                {...register('price', { required: true, min: 0 })}
+                {...register("price", { required: true, min: 0 })}
                 type="number"
                 step="0.01"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -382,7 +447,7 @@ const Items: React.FC = () => {
                 Category
               </label>
               <select
-                {...register('category', { required: true })}
+                {...register("category", { required: true })}
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -398,7 +463,7 @@ const Items: React.FC = () => {
             </div>
           </div>
 
-          {selectedCategory === 'other' && (
+          {selectedCategory === "other" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Custom Category
@@ -429,9 +494,9 @@ const Items: React.FC = () => {
             </p>
             {selectedFile && previewUrl && (
               <div className="mt-2">
-                <img 
-                  src={previewUrl} 
-                  alt="Preview" 
+                <img
+                  src={previewUrl}
+                  alt="Preview"
                   className="h-32 w-32 object-cover rounded-lg border"
                 />
                 <p className="text-xs text-green-600 mt-1">
@@ -446,7 +511,7 @@ const Items: React.FC = () => {
               Image URL (Alternative to upload)
             </label>
             <input
-              {...register('imageUrl')}
+              {...register("imageUrl")}
               type="url"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -454,14 +519,12 @@ const Items: React.FC = () => {
 
           <div className="flex items-center">
             <input
-              {...register('isActive')}
+              {...register("isActive")}
               type="checkbox"
               defaultChecked={true}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-            <label className="ml-2 block text-sm text-gray-700">
-              Active
-            </label>
+            <label className="ml-2 block text-sm text-gray-700">Active</label>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
@@ -477,7 +540,13 @@ const Items: React.FC = () => {
               disabled={isSubmitting}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {isSubmitting ? <LoadingSpinner size="sm" /> : (editingItem ? 'Update' : 'Create')}
+              {isSubmitting ? (
+                <LoadingSpinner size="sm" />
+              ) : editingItem ? (
+                "Update"
+              ) : (
+                "Create"
+              )}
             </button>
           </div>
         </form>

@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
+import React, { useState } from "react";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="relative flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="relative flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {sidebarOpen && (
@@ -23,9 +23,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <div className="flex-1 flex min-w-0 flex-col">
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+          <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
     </div>

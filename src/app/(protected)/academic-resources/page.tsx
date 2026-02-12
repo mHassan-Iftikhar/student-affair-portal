@@ -13,6 +13,7 @@ import {
 import Table from "../../../components/UI/Table";
 import Modal from "../../../components/UI/Modal";
 import LoadingSpinner from "../../../components/UI/LoadingSpinner";
+import { where } from "firebase/firestore";
 import { uploadFile } from "../../../utils/firebaseStorage";
 import {
   fileToBase64,
@@ -26,6 +27,7 @@ import {
 import {
   addAcademicResource,
   getDocuments,
+  updateDocument,
   updateDocumentWithBase64,
   deleteDocument,
   getDocumentWithBase64,
@@ -33,25 +35,28 @@ import {
 import { logCreate, logUpdate, logDelete } from "../../../utils/auditLogger";
 import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
-
 interface Resource {
   id?: string;
   _id?: string;
   title: string;
-  description: string;
-  category: string;
-  fileUrl?: string;
+  semester: string;
+  subject: string;
+  resourceType: string;
   fileName: string;
   fileType: string;
+  fileSize: string;
+  fileBase64?: string;
+  fileUrl?: string; // Fallback for old data or mock data
+  description?: string; // For mock data compatibility
+  category?: string; // For mock data compatibility
   uploadedBy: string;
+  department?: string;
   createdAt: string;
-  files?: {
-    resource?: Base64Data;
-  };
+  updatedAt: string;
 }
 
 const AcademicResources: React.FC = () => {
-  const { user } = useAuth();
+  const { user, department } = useAuth();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,8 +66,9 @@ const AcademicResources: React.FC = () => {
 
   const [formData, setFormData] = useState({
     title: "",
-    description: "",
-    category: "",
+    semester: "",
+    subject: "",
+    resourceType: "Notes",
   });
 
   useEffect(() => {
@@ -72,8 +78,17 @@ const AcademicResources: React.FC = () => {
   const fetchResources = async () => {
     setLoading(true);
     try {
+      // Build constraints for department filtering
+      const constraints = [];
+      if (department && department !== "General") {
+        constraints.push(where("department", "==", department));
+      }
+
       // Try to fetch from Firestore
-      const firestoreResources = await getDocuments("academic_resources");
+      const firestoreResources = await getDocuments(
+        "academic_resources",
+        constraints,
+      );
 
       if (firestoreResources && firestoreResources.length > 0) {
         setResources(
@@ -82,15 +97,23 @@ const AcademicResources: React.FC = () => {
               ({
                 _id: r.id || r._id || "",
                 title: r.title || "",
-                description: r.description || "",
-                category: r.category || "",
+                semester: r.semester || "",
+                subject: r.subject || "",
+                resourceType: r.resourceType || "",
+                fileName: r.fileName || "",
+                fileType: r.fileType || "",
+                fileSize: r.fileSize || "",
+                fileBase64: r.fileBase64 || "",
                 uploadedBy: r.uploadedBy || "",
+                department: r.department || "",
                 createdAt:
                   r.createdAt?.toDate?.()?.toISOString() ||
                   r.createdAt ||
                   new Date().toISOString(),
-                fileName: r.files?.resource?.fileName || r.fileName || "",
-                fileType: r.files?.resource?.mimeType || r.fileType || "",
+                updatedAt:
+                  r.updatedAt?.toDate?.()?.toISOString() ||
+                  r.updatedAt ||
+                  new Date().toISOString(),
               }) as Resource,
           ),
         );
@@ -100,25 +123,29 @@ const AcademicResources: React.FC = () => {
           {
             _id: "1",
             title: "Computer Science Notes",
-            description: "Comprehensive notes for CS101",
-            category: "Computer Science",
-            fileUrl: "https://example.com/cs-notes.pdf",
+            semester: "7th",
+            subject: "Computer Science",
+            resourceType: "Notes",
             fileName: "cs-notes.pdf",
             fileType: "application/pdf",
+            fileSize: "1.2 MB",
             uploadedBy: "Admin",
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           },
           {
             _id: "2",
             title: "Mathematics Study Guide",
-            description: "Calculus and Linear Algebra resources",
-            category: "Mathematics",
-            fileUrl: "https://example.com/math-guide.docx",
+            semester: "5th",
+            subject: "Mathematics",
+            resourceType: "Notes",
             fileName: "math-guide.docx",
             fileType:
               "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            fileSize: "500 KB",
             uploadedBy: "Admin",
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           },
         ]);
       }
@@ -187,22 +214,19 @@ const AcademicResources: React.FC = () => {
 
       // Integrate AI Content Moderation
       // For academic resources, we mainly check if the file is an image or if there's enough text content/title
-      const imageUrlToMod =
-        base64FileData && base64FileData.mimeType.startsWith("image/")
-          ? base64ToDataURL(base64FileData)
-          : undefined;
-
-      if (imageUrlToMod || formData.description || formData.title) {
+      if (base64FileData || formData.subject || formData.title) {
         const moderationToastId = toast.loading("AI is verifying content...");
         try {
           const modResponse = await fetch("/api/content-moderation", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              topic: formData.category || "academic",
-              content: formData.description,
+              topic: formData.subject || "academic",
+              content: `${formData.title} - ${formData.semester}`,
               title: formData.title,
-              imageUrl: imageUrlToMod,
+              imageUrl: base64FileData?.mimeType.startsWith("image/")
+                ? base64ToDataURL(base64FileData)
+                : undefined,
             }),
           });
 
@@ -230,31 +254,25 @@ const AcademicResources: React.FC = () => {
       if (editingResource) {
         // Update existing resource
         const updateData: any = {
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
+          ...formData,
+          updatedAt: new Date().toISOString(),
         };
 
-        const files: any = {};
         if (base64FileData) {
-          files.resource = base64FileData;
           updateData.fileName = base64FileData.fileName;
           updateData.fileType = base64FileData.mimeType;
+          updateData.fileSize = formatFileSize(selectedFile?.size || 0);
+          updateData.fileBase64 = base64ToDataURL(base64FileData);
         }
 
         const resourceId = editingResource._id || editingResource.id || "";
-        await updateDocumentWithBase64(
-          "academic_resources",
-          resourceId,
-          updateData,
-          Object.keys(files).length > 0 ? files : undefined,
-        );
+        await updateDocument("academic_resources", resourceId, updateData);
 
         // Log the update
         if (user) {
           await logUpdate(user, "academic_resources", resourceId, {
             title: formData.title,
-            category: formData.category,
+            subject: formData.subject,
             fileUpdated: !!base64FileData,
           });
         }
@@ -268,11 +286,12 @@ const AcademicResources: React.FC = () => {
         }
 
         const newResourceId = await addAcademicResource({
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          fileData: base64FileData,
-          uploadedBy: user?.email || "Admin",
+          ...formData,
+          fileName: base64FileData.fileName,
+          fileType: base64FileData.mimeType,
+          fileSize: formatFileSize(selectedFile?.size || 0),
+          fileBase64: base64ToDataURL(base64FileData),
+          department: department || "General",
         });
 
         // Log the creation
@@ -283,7 +302,7 @@ const AcademicResources: React.FC = () => {
             newResourceId || "unknown",
             {
               title: formData.title,
-              category: formData.category,
+              subject: formData.subject,
               fileName: base64FileData.fileName,
             },
           );
@@ -307,8 +326,9 @@ const AcademicResources: React.FC = () => {
     setEditingResource(resource);
     setFormData({
       title: resource.title,
-      description: resource.description,
-      category: resource.category,
+      semester: resource.semester,
+      subject: resource.subject,
+      resourceType: resource.resourceType,
     });
     setSelectedFile(null);
     setIsModalOpen(true);
@@ -326,7 +346,7 @@ const AcademicResources: React.FC = () => {
         if (user) {
           await logDelete(user, "academic_resources", id, {
             title: resourceToDelete?.title,
-            category: resourceToDelete?.category,
+            subject: resourceToDelete?.subject,
           });
         }
 
@@ -342,8 +362,9 @@ const AcademicResources: React.FC = () => {
   const resetForm = () => {
     setFormData({
       title: "",
-      description: "",
-      category: "",
+      semester: "",
+      subject: "",
+      resourceType: "Notes",
     });
     setSelectedFile(null);
     setEditingResource(null);
@@ -378,8 +399,9 @@ const AcademicResources: React.FC = () => {
 
   const columns = [
     { key: "title", header: "Title" },
-    { key: "category", header: "Subject" },
-    { key: "description", header: "Description" },
+    { key: "subject", header: "Subject" },
+    { key: "semester", header: "Semester" },
+    { key: "resourceType", header: "Type" },
     {
       key: "fileName",
       header: "File",
@@ -481,32 +503,55 @@ const AcademicResources: React.FC = () => {
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Semester
+              </label>
+              <input
+                type="text"
+                value={formData.semester}
+                onChange={(e) =>
+                  setFormData({ ...formData, semester: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. 7th"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Resource Type
+              </label>
+              <select
+                value={formData.resourceType}
+                onChange={(e) =>
+                  setFormData({ ...formData, resourceType: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="Notes">Notes</option>
+                <option value="Past Paper">Past Paper</option>
+                <option value="Assignment">Assignment</option>
+                <option value="Syllabus">Syllabus</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Subject
             </label>
             <input
               type="text"
-              value={formData.category}
+              value={formData.subject}
               onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
+                setFormData({ ...formData, subject: e.target.value })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              rows={3}
               required
             />
           </div>

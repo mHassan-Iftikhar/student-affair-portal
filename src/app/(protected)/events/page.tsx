@@ -6,6 +6,7 @@ import { Story } from "../../../types";
 import Table from "../../../components/UI/Table";
 import Modal from "../../../components/UI/Modal";
 import LoadingSpinner from "../../../components/UI/LoadingSpinner";
+import { where } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import {
@@ -28,7 +29,7 @@ import { logCreate, logUpdate, logDelete } from "../../../utils/auditLogger";
 import { useAuth } from "../../../context/AuthContext";
 
 const Stories: React.FC = () => {
-  const { user } = useAuth();
+  const { user, department } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,7 +48,11 @@ const Stories: React.FC = () => {
 
   const fetchStories = async () => {
     try {
-      const firestoreStories = await getDocuments("events");
+      const constraints = [];
+      if (department && department !== "General") {
+        constraints.push(where("department", "==", department));
+      }
+      const firestoreStories = await getDocuments("events", constraints);
       setStories(
         firestoreStories.map((story: any) => ({
           _id: story.id || story._id || story._id || "",
@@ -281,14 +286,15 @@ const Stories: React.FC = () => {
 
         toast.success("Story updated successfully");
         fetchStories();
-      } else {
         // Create new story using Firestore
         const newStoryId = await addEvent({
           title: data.title || "",
-          content: data.content || "",
-          isPublished: data.isPublished || false,
-          imageData,
-          videoData,
+          date: (data as any).date || new Date().toISOString().split("T")[0],
+          time: (data as any).time || new Date().toLocaleTimeString(),
+          location: (data as any).location || "Main Campus",
+          image: imagePreviewUrl || "",
+          category: (data as any).category || "General",
+          department: department || "General",
         });
 
         // Log the create action

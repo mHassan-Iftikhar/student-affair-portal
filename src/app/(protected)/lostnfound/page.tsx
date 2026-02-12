@@ -13,6 +13,7 @@ import { Item } from "../../../types";
 import Table from "../../../components/UI/Table";
 import Modal from "../../../components/UI/Modal";
 import LoadingSpinner from "../../../components/UI/LoadingSpinner";
+import { where } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 import {
@@ -33,7 +34,7 @@ import { logCreate, logUpdate, logDelete } from "../../../utils/auditLogger";
 import { useAuth } from "../../../context/AuthContext";
 
 const Items: React.FC = () => {
-  const { user } = useAuth();
+  const { user, department } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,11 @@ const Items: React.FC = () => {
 
   const fetchItems = async () => {
     try {
-      const firestoreItems = await getDocuments("lostNfound");
+      const constraints = [];
+      if (department && department !== "General") {
+        constraints.push(where("department", "==", department));
+      }
+      const firestoreItems = await getDocuments("lostNfound", constraints);
       const mappedItems = firestoreItems.map((item) => ({
         _id: item.id || "",
         id: item.id || "",
@@ -268,11 +273,14 @@ const Items: React.FC = () => {
         // Create new item using Firestore
         const newItemId = await addLostAndFoundItem({
           title: data.title || "",
+          reportType: (data as any).reportType || "Lost",
           description: data.description || "",
-          price: data.price || 0,
-          category: finalCategory || "",
-          isActive: true,
-          imageData,
+          date: (data as any).date || new Date().toISOString().split("T")[0],
+          time: (data as any).time || new Date().toLocaleTimeString(),
+          imageUrl: previewUrl || "",
+          isClaimed: false,
+          createdBy: user?.email || "Admin",
+          department: department || "General",
         });
 
         // Log the create action

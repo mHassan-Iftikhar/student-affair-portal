@@ -64,6 +64,7 @@ export interface DashboardStats {
 export interface AuthContextType {
   user: any;
   token: string | null;
+  department: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;

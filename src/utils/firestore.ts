@@ -326,6 +326,7 @@ export const addAcademicResource = async (data: {
   fileType: string;
   fileSize: string;
   fileBase64: string;
+  department?: string;
 }): Promise<string> => {
   return await addDocument("academic_resources", {
     ...data,
@@ -346,6 +347,7 @@ export const addLostAndFoundItem = async (data: {
   createdBy: string;
   claimedBy?: string;
   claimedAt?: string;
+  department?: string;
 }): Promise<string> => {
   return await addDocument("lostNfound", {
     ...data,
@@ -361,6 +363,7 @@ export const addEvent = async (data: {
   location: string;
   image: string;
   category: string;
+  department?: string;
 }): Promise<string> => {
   return await addDocument("events", {
     ...data,
@@ -377,6 +380,7 @@ export const addGroup = async (data: {
   icon: any; // IconData
   iconColor: string; // Color
   membersCount: number;
+  department?: string;
 }): Promise<string> => {
   return await addDocument("groups", {
     ...data,
@@ -395,6 +399,7 @@ export const addUserWithProfilePicture = async (data: {
   profileImageBase64: string;
   fcmToken: string;
   isProfileCompleted: boolean;
+  department?: string;
 }): Promise<string> => {
   return await addDocument("users", {
     ...data,
@@ -434,6 +439,7 @@ export interface AuditLogEntry {
   ipAddress?: string;
   userAgent?: string;
   screenshotData?: Base64Data;
+  department?: string;
   timestamp?: any;
 }
 
@@ -469,6 +475,7 @@ export const addAuditLog = async (data: AuditLogEntry): Promise<string> => {
  */
 export const getAuditLogs = async (filters?: {
   adminEmail?: string;
+  department?: string;
   action?: string;
   resource?: string;
   startDate?: Date;
@@ -484,6 +491,9 @@ export const getAuditLogs = async (filters?: {
 
   if (filters?.adminEmail) {
     constraints.push(where("adminEmail", "==", filters.adminEmail));
+  }
+  if (filters?.department) {
+    constraints.push(where("department", "==", filters.department));
   }
   if (filters?.action) {
     constraints.push(where("action", "==", filters.action));

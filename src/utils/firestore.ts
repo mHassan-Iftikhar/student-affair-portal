@@ -319,107 +319,96 @@ export const getDocumentWithBase64 = async (
 // Academic Resources
 export const addAcademicResource = async (data: {
   title: string;
-  description: string;
-  category: string;
-  fileData: Base64Data;
-  uploadedBy: string;
+  semester: string;
+  subject: string;
+  resourceType: string;
+  fileName: string;
+  fileType: string;
+  fileSize: string;
+  fileBase64: string;
 }): Promise<string> => {
-  return await addDocumentWithBase64(
-    "academic_resources",
-    {
-      title: data.title,
-      description: data.description,
-      category: data.category,
-      uploadedBy: data.uploadedBy,
-    },
-    {
-      resource: data.fileData,
-    },
-  );
+  return await addDocument("academic_resources", {
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 };
 
 // Lost and Found Items
 export const addLostAndFoundItem = async (data: {
   title: string;
+  reportType: string;
   description: string;
-  category: string;
-  imageData?: Base64Data;
-  [key: string]: any;
+  date: string;
+  time: string;
+  imageUrl: string;
+  isClaimed: boolean;
+  createdBy: string;
+  claimedBy?: string;
+  claimedAt?: string;
 }): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.imageData) {
-    files.image = data.imageData;
-  }
-
-  const { imageData: _imageData, ...restData } = data;
-  return await addDocumentWithBase64("lostNfound", restData, files);
+  return await addDocument("lostNfound", {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
 };
 
-// Events (Stories)
+// Events
 export const addEvent = async (data: {
   title: string;
-  content: string;
-  imageData?: Base64Data;
-  videoData?: Base64Data;
-  [key: string]: any;
+  date: string;
+  time: string;
+  location: string;
+  image: string;
+  category: string;
 }): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.imageData) {
-    files.image = data.imageData;
-  }
-  if (data.videoData) {
-    files.video = data.videoData;
-  }
-
-  const { imageData: _imageData, videoData: _videoData, ...restData } = data;
-  return await addDocumentWithBase64("events", restData, files);
+  return await addDocument("events", {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
 };
 
 // Groups
 export const addGroup = async (data: {
   name: string;
   description: string;
-  imageData?: Base64Data;
-  [key: string]: any;
+  coverImage: string;
+  category: string;
+  icon: any; // IconData
+  iconColor: string; // Color
+  membersCount: number;
 }): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.imageData) {
-    files.image = data.imageData;
-  }
-
-  const { imageData: _imageData, ...restData } = data;
-  return await addDocumentWithBase64("groups", restData, files);
+  return await addDocument("groups", {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
 };
 
-// Users with Profile Picture
+// Users
 export const addUserWithProfilePicture = async (data: {
   uid: string;
+  name: string;
   email: string;
-  displayName: string;
-  photoData?: Base64Data;
-  [key: string]: any;
+  degree: string;
+  semester: string;
+  gender: string;
+  profileImageBase64: string;
+  fcmToken: string;
+  isProfileCompleted: boolean;
 }): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.photoData) {
-    files.profilePicture = data.photoData;
-  }
-
-  const { photoData: _photoData, ...restData } = data;
-  return await addDocumentWithBase64("users", restData, files);
+  return await addDocument("users", {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
 };
 
 export const updateUserProfilePicture = async (
   userId: string,
-  photoData: Base64Data,
+  profileImageBase64: string,
 ): Promise<void> => {
-  return await updateDocumentWithBase64(
-    "users",
-    userId,
-    {},
-    {
-      profilePicture: photoData,
-    },
-  );
+  return await updateDocument("users", userId, {
+    profileImageBase64,
+  });
 };
 
 /**

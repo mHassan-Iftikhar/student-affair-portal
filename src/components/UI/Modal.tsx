@@ -47,7 +47,7 @@ const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        <div className="p-6">{children}</div>
+        <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
       </div>
     </div>
   );

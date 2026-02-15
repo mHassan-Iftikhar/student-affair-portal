@@ -36,10 +36,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
         
         <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
-          <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+          {/* <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
             <Bell className="h-6 w-6" />
             <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-          </button>
+          </button> */}
           
           <div className="flex items-center space-x-3 sm:pl-6 sm:border-l sm:border-gray-200">
             <div className="text-right hidden sm:block">

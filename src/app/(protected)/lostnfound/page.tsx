@@ -64,7 +64,7 @@ const Items: React.FC = () => {
         id: item.id || "",
         title: item.title || "",
         description: item.description || "",
-        price: typeof item.price === "number" ? item.price : 0,
+        // price removed
         category: item.category || "",
         imageUrl: item.imageUrl || "",
         isActive: item.isActive !== false,
@@ -95,7 +95,7 @@ const Items: React.FC = () => {
     setEditingItem(item);
     setValue("title", item.title);
     setValue("description", item.description);
-    setValue("price", item.price);
+    // setValue for price removed
     setValue("category", item.category);
     setValue("imageUrl", item.imageUrl);
     setValue("isActive", item.isActive);
@@ -240,7 +240,7 @@ const Items: React.FC = () => {
         const updateData: any = {
           title: data.title,
           description: data.description,
-          price: data.price || 0,
+          // price removed
           category: finalCategory,
           isActive: data.isActive !== undefined ? data.isActive : true,
         };
@@ -320,12 +320,6 @@ const Items: React.FC = () => {
     {
       key: "category",
       header: "Category",
-      sortable: true,
-    },
-    {
-      key: "price",
-      header: "Price",
-      render: (item: Item) => `$${(item.price ?? 0).toFixed(2)}`,
       sortable: true,
     },
     {
@@ -438,17 +432,7 @@ const Items: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price
-              </label>
-              <input
-                {...register("price", { required: true, min: 0 })}
-                type="number"
-                step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            {/* Price field removed */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

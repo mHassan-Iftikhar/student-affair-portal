@@ -49,6 +49,8 @@ router.post(
         4. The content should appear realistic and related to university activities such as lost & found, events, or academic resources.
         5. If an image is provided, evaluate whether it appears relevant to the title and description (based on context provided).
 
+        Important: Do NOT reject or penalize content based on length. Short titles and short descriptions are acceptable. Only evaluate authenticity, appropriateness, relevance, and policy compliance—not word count or character count.
+
         Response Format (JSON only, no markdown formatting):
         {
           "isAuthentic": true | false,

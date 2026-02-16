@@ -327,12 +327,11 @@ export const addAcademicResource = async (data: {
   fileType: string;
   fileSize: string;
   fileBase64: string;
-  department?: string;
+  updatedAt?: string;
+  createdAt?: string;
 }): Promise<string> => {
   return await addDocument("academic_resources", {
     ...data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
   });
 };
 
@@ -369,7 +368,6 @@ export const addEvent = async (
     isPublished: boolean;
   },
   imageData?: Base64Data,
-  videoData?: Base64Data
 ): Promise<string> => {
   let imageUrl: string | undefined = undefined;
   if (imageData && imageData.data && imageData.mimeType) {
@@ -378,24 +376,6 @@ export const addEvent = async (
   return await addDocument("events", {
     ...data,
     ...(imageUrl ? { imageUrl } : {}),
-  });
-};
-
-// Groups
-export const addGroup = async (data: {
-  name: string;
-  description: string;
-  coverImage: string;
-  category: string;
-  icon: any; // IconData
-  iconColor: string; // Color
-  membersCount: number;
-  department?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}): Promise<string> => {
-  return await addDocument("groups", {
-    ...data,
   });
 };
 

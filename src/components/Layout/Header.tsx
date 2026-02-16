@@ -41,8 +41,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
           </button> */}
           
-          <div className="flex items-center space-x-3 sm:pl-6 sm:border-l sm:border-gray-200">
-            <div className="text-right hidden sm:block">
+          <div className="hidden sm:flex items-center space-x-3 sm:pl-6 sm:border-l sm:border-gray-200">
+            <div className="text-right">
               <p className="text-sm font-semibold text-gray-900">
                 {user?.displayName || 'Admin'}
               </p>
@@ -51,7 +51,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-md">
-              {user?.email?.[0].toUpperCase()}
+              {user?.email?.[0]?.toUpperCase()}
             </div>
           </div>
         </div>

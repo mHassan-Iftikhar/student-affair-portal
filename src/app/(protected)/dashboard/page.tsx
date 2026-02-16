@@ -124,16 +124,6 @@ const Dashboard: React.FC = () => {
       trend: "up",
     },
     {
-      title: "Pending Reports",
-      value: stats?.pendingReports || 0,
-      icon: AlertTriangle,
-      color: "from-yellow-500 to-yellow-600",
-      bgColor: "bg-yellow-50",
-      textColor: "text-yellow-600",
-      change: "-3%",
-      trend: "down",
-    },
-    {
       title: "Total Events",
       value: stats?.totalStories || 0,
       icon: BookOpen,

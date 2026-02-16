@@ -340,7 +340,6 @@ const Stories: React.FC = () => {
             isPublished: data.isPublished !== undefined ? data.isPublished : false,
           },
           imageData ? imageData : undefined,
-          videoData ? videoData : undefined
         );
         // Log the create action
         if (user) {

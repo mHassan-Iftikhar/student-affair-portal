@@ -103,7 +103,10 @@ export const base64ToFile = (base64Data: Base64Data): File => {
  * Get data URL from Base64Data (for displaying images/videos)
  */
 export const base64ToDataURL = (base64Data: Base64Data): string => {
-  return `data:${base64Data.mimeType};base64,${base64Data.data}`;
+  if (base64Data.data && base64Data.mimeType) {
+    return `data:${base64Data.mimeType};base64,${base64Data.data}`;
+  }
+  return base64Data.data || "";
 };
 
 /**

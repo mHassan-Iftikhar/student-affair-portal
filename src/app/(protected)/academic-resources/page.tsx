@@ -92,30 +92,33 @@ const AcademicResources: React.FC = () => {
 
       if (firestoreResources && firestoreResources.length > 0) {
         setResources(
-          firestoreResources.map(
-            (r) =>
-              ({
-                _id: r.id || r._id || "",
-                title: r.title || "",
-                semester: r.semester || "",
-                subject: r.subject || "",
-                resourceType: r.resourceType || "",
-                fileName: r.fileName || "",
-                fileType: r.fileType || "",
-                fileSize: r.fileSize || "",
-                fileBase64: r.fileBase64 || "",
-                uploadedBy: r.uploadedBy || "",
-                department: r.department || "",
-                createdAt:
-                  r.createdAt?.toDate?.()?.toISOString() ||
-                  r.createdAt ||
-                  new Date().toISOString(),
-                updatedAt:
-                  r.updatedAt?.toDate?.()?.toISOString() ||
-                  r.updatedAt ||
-                  new Date().toISOString(),
-              }) as Resource,
-          ),
+          firestoreResources.map((r) => {
+            let fileBase64 = r.fileBase64 || "";
+            // If files.resource exists and is an image, use its dataURL
+            if (r.files && r.files.resource && r.files.resource.data && r.files.resource.mimeType && r.files.resource.mimeType.startsWith("image/")) {
+              fileBase64 = `data:${r.files.resource.mimeType};base64,${r.files.resource.data}`;
+            }
+            return {
+              _id: r.id || r._id || "",
+              title: r.title || "",
+              semester: r.semester || "",
+              subject: r.subject || "",
+              resourceType: r.resourceType || "",
+              fileName: r.fileName || "",
+              fileType: r.fileType || "",
+              fileSize: r.fileSize || "",
+              fileBase64,
+              uploadedBy: r.uploadedBy || "",
+              createdAt:
+                r.createdAt?.toDate?.()?.toISOString() ||
+                r.createdAt ||
+                new Date().toISOString(),
+              updatedAt:
+                r.updatedAt?.toDate?.()?.toISOString() ||
+                r.updatedAt ||
+                new Date().toISOString(),
+            } as Resource;
+          })
         );
       } else {
         // Mock data for demo
@@ -257,17 +260,19 @@ const AcademicResources: React.FC = () => {
           ...formData,
           updatedAt: new Date().toISOString(),
         };
-
+        let files: any = undefined;
         if (base64FileData) {
           updateData.fileName = base64FileData.fileName;
           updateData.fileType = base64FileData.mimeType;
           updateData.fileSize = formatFileSize(selectedFile?.size || 0);
-          updateData.fileBase64 = base64ToDataURL(base64FileData);
+          files = { resource: base64FileData };
         }
-
         const resourceId = editingResource._id || editingResource.id || "";
-        await updateDocument("academic_resources", resourceId, updateData);
-
+        if (files) {
+          await updateDocumentWithBase64("academic_resources", resourceId, updateData, files);
+        } else {
+          await updateDocument("academic_resources", resourceId, updateData);
+        }
         // Log the update
         if (user) {
           await logUpdate(user, "academic_resources", resourceId, {
@@ -276,7 +281,6 @@ const AcademicResources: React.FC = () => {
             fileUpdated: !!base64FileData,
           });
         }
-
         toast.success("Resource updated successfully!");
       } else {
         // Create new resource
@@ -284,16 +288,13 @@ const AcademicResources: React.FC = () => {
           toast.error("File encoding failed");
           return;
         }
-
         const newResourceId = await addAcademicResource({
           ...formData,
           fileName: base64FileData.fileName,
           fileType: base64FileData.mimeType,
           fileSize: formatFileSize(selectedFile?.size || 0),
           fileBase64: base64ToDataURL(base64FileData),
-          department: department || "General",
         });
-
         // Log the creation
         if (user) {
           await logCreate(
@@ -307,7 +308,6 @@ const AcademicResources: React.FC = () => {
             },
           );
         }
-
         toast.success("Resource uploaded successfully to Firestore!");
       }
 
@@ -372,7 +372,7 @@ const AcademicResources: React.FC = () => {
 
   const handleDownload = async (resource: Resource) => {
     try {
-      // If resource has Base64 data in Firestore
+      // If resource has Base64 data in Firestore (new format)
       if (resource.id || resource._id) {
         const { files } = await getDocumentWithBase64(
           "academic_resources",
@@ -384,7 +384,18 @@ const AcademicResources: React.FC = () => {
           return;
         }
       }
-
+      // Fallback to fileBase64 (old format)
+      if (resource.fileBase64) {
+        downloadBase64File({
+          data: resource.fileBase64,
+          fileName: resource.fileName,
+          mimeType: resource.fileType,
+          size: 0, // Size is optional, set to 0 or actual size if available
+          timestamp: Date.now(),
+        });
+        toast.success("Download started");
+        return;
+      }
       // Fallback to URL if available
       if (resource.fileUrl) {
         window.open(resource.fileUrl, "_blank");
@@ -454,14 +465,14 @@ const AcademicResources: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 px-2 sm:px-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <BookOpen className="h-8 w-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <BookOpen className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600" />
             Academic Resources
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">
             Manage educational materials and resources
           </p>
         </div>
@@ -470,14 +481,16 @@ const AcademicResources: React.FC = () => {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 w-full sm:w-auto justify-center"
         >
           <Plus className="h-5 w-5" />
-          Add Resource
+          <span>Add Resource</span>
         </button>
       </div>
 
-      <Table data={resources} columns={columns} />
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <Table data={resources} columns={columns} />
+      </div>
 
       <Modal
         isOpen={isModalOpen}
@@ -503,7 +516,7 @@ const AcademicResources: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Semester
@@ -532,11 +545,8 @@ const AcademicResources: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="Notes">Notes</option>
                 <option value="Past Paper">Past Paper</option>
                 <option value="Assignment">Assignment</option>
-                <option value="Syllabus">Syllabus</option>
-                <option value="Other">Other</option>
               </select>
             </div>
           </div>
@@ -590,21 +600,21 @@ const AcademicResources: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex flex-col sm:flex-row justify-end sm:space-x-3 pt-4 gap-2 sm:gap-0">
             <button
               type="button"
               onClick={() => {
                 setIsModalOpen(false);
                 resetForm();
               }}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 w-full sm:w-auto"
               disabled={uploading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 w-full sm:w-auto justify-center"
               disabled={uploading}
             >
               {uploading ? (

@@ -38,6 +38,11 @@ const Items: React.FC = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; itemId: string | null }>({ open: false, itemId: null });
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>(undefined);
+  const [showContentModal, setShowContentModal] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,6 +50,7 @@ const Items: React.FC = () => {
   const [customCategory, setCustomCategory] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [reportType, setReportType] = useState<string>("Lost");
 
   const { register, handleSubmit, reset, setValue } = useForm<Partial<Item>>();
 
@@ -58,19 +64,31 @@ const Items: React.FC = () => {
       if (department && department !== "General") {
         constraints.push(where("department", "==", department));
       }
+      // Use correct Firestore collection name and include reportType
       const firestoreItems = await getDocuments("lostNfound", constraints);
-      const mappedItems = firestoreItems.map((item) => ({
-        _id: item.id || "",
-        id: item.id || "",
-        title: item.title || "",
-        description: item.description || "",
-        // price removed
-        category: item.category || "",
-        imageUrl: item.imageUrl || "",
-        isActive: item.isActive !== false,
-        createdAt: item.createdAt || new Date().toISOString(),
-        updatedAt: item.updatedAt || new Date().toISOString(),
-      }));
+      const mappedItems = firestoreItems.map((item) => {
+        let imageLink = "";
+        if (item.files?.image?.dataURL) {
+          imageLink = item.files.image.dataURL;
+        } else if (item.imageUrl) {
+          imageLink = item.imageUrl;
+        } else if (item.imageLink) {
+          imageLink = item.imageLink;
+        }
+        return {
+          _id: item.id || "",
+          id: item.id || "",
+          title: item.title || "",
+          description: item.description || "",
+          // price removed
+          category: item.category || "",
+          imageLink,
+          isActive: item.isActive !== false,
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+          reportType: item.reportType || "Lost",
+        };
+      });
       setItems(mappedItems as Item[]);
     } catch (error) {
       console.error("Failed to fetch items:", error);
@@ -97,7 +115,7 @@ const Items: React.FC = () => {
     setValue("description", item.description);
     // setValue for price removed
     setValue("category", item.category);
-    setValue("imageUrl", item.imageUrl);
+    setValue("imageLink", item.imageLink || item.imageUrl || "");
     setValue("isActive", item.isActive);
 
     // Check if category is a predefined one or custom
@@ -158,26 +176,28 @@ const Items: React.FC = () => {
   };
 
   const handleDelete = async (itemId: string) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
+    setDeleteConfirm({ open: true, itemId });
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteConfirm.itemId) return;
     try {
-      await deleteDocument("lostNfound", itemId);
-
-      // Log the delete action
+      await deleteDocument("lostNfound", deleteConfirm.itemId);
       if (user) {
         await logDelete(
           { uid: user.uid, email: user.email || "unknown" },
           "ITEMS",
-          itemId,
+          deleteConfirm.itemId,
           { action: "deleted_lost_found_item" },
         );
       }
-
       toast.success("Item deleted successfully");
       fetchItems();
     } catch (error) {
       console.error("Failed to delete item:", error);
       toast.error("Failed to delete item");
+    } finally {
+      setDeleteConfirm({ open: false, itemId: null });
     }
   };
 
@@ -273,14 +293,13 @@ const Items: React.FC = () => {
         // Create new item using Firestore
         const newItemId = await addLostAndFoundItem({
           title: data.title || "",
-          reportType: (data as any).reportType || "Lost",
+          reportType: reportType || "Lost",
           description: data.description || "",
           date: (data as any).date || new Date().toISOString().split("T")[0],
           time: (data as any).time || new Date().toLocaleTimeString(),
-          imageUrl: previewUrl || "",
+          imageLink: typeof previewUrl === "string" ? previewUrl : "",
           isClaimed: false,
           createdBy: user?.email || "Admin",
-          department: department || "General",
         });
 
         // Log the create action
@@ -318,9 +337,50 @@ const Items: React.FC = () => {
       sortable: true,
     },
     {
-      key: "category",
-      header: "Category",
-      sortable: true,
+      key: "description",
+      header: "Content",
+      render: (item: Item) => {
+        const isLong = item.description && item.description.length > 60;
+        return (
+          <div className="max-w-xs">
+            <span className={isLong ? "truncate inline-block w-40 align-top" : ""}>
+              {isLong ? item.description.slice(0, 60) + "..." : item.description}
+            </span>
+            {isLong && (
+              <button
+                className="ml-2 text-blue-600 underline hover:text-blue-900"
+                type="button"
+                onClick={() => {
+                  setSelectedContent(item.description);
+                  setShowContentModal(true);
+                }}
+              >
+                More
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "imageLink",
+      header: "Image",
+      render: (item: Item) => (
+        item.imageLink ? (
+          <button
+            className="text-blue-600 hover:text-blue-900 underline"
+            onClick={() => {
+              setSelectedImageUrl(item.imageLink);
+              setShowImageModal(true);
+            }}
+            type="button"
+          >
+            Show Image
+          </button>
+        ) : (
+          <span className="text-gray-400">No Image</span>
+        )
+      ),
     },
     {
       key: "isActive",
@@ -338,6 +398,11 @@ const Items: React.FC = () => {
       ),
     },
     {
+      key: "reportType",
+      header: "Report Type",
+      sortable: true,
+    },
+    {
       key: "actions",
       header: "Actions",
       render: (item: Item) => (
@@ -351,6 +416,7 @@ const Items: React.FC = () => {
           <button
             onClick={() => handleDelete(item._id || (item as any).id)}
             className="text-red-600 hover:text-red-900"
+            type="button"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -431,45 +497,20 @@ const Items: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Price field removed */}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                {...register("category", { required: true })}
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Category</option>
-                <option value="electronics">Electronics</option>
-                <option value="clothing">Clothing</option>
-                <option value="home">Home & Garden</option>
-                <option value="sports">Sports</option>
-                <option value="books">Books</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Report Type
+            </label>
+            <select
+              {...register("reportType", { required: true })}
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Lost">Lost</option>
+              <option value="Found">Found</option>
+            </select>
           </div>
-
-          {selectedCategory === "other" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Custom Category
-              </label>
-              <input
-                type="text"
-                value={customCategory}
-                onChange={(e) => setCustomCategory(e.target.value)}
-                placeholder="Enter custom category"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -482,7 +523,7 @@ const Items: React.FC = () => {
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Max size: 10MB. Supported: JPG, PNG, WEBP
+              Max size: 1MB. Supported: JPG, PNG, WEBP
             </p>
             {selectedFile && previewUrl && (
               <div className="mt-2">
@@ -496,17 +537,6 @@ const Items: React.FC = () => {
                 </p>
               </div>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Image URL (Alternative to upload)
-            </label>
-            <input
-              {...register("imageUrl")}
-              type="url"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
           </div>
 
           <div className="flex items-center">
@@ -542,6 +572,69 @@ const Items: React.FC = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Image Modal */}
+      <Modal isOpen={showImageModal} onClose={() => setShowImageModal(false)} title="Item Image" size="md">
+        <div className="flex flex-col items-center justify-center p-4">
+          {selectedImageUrl ? (
+            <img
+              src={selectedImageUrl}
+              alt="Lost and Found Item"
+              className="max-w-full max-h-[60vh] rounded shadow"
+            />
+          ) : (
+            <span className="text-gray-400">No Image Available</span>
+          )}
+          <button
+            className="mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={() => setShowImageModal(false)}
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+        {/* Content Modal */}
+        <Modal isOpen={showContentModal} onClose={() => setShowContentModal(false)} title="Full Content" size="md">
+          <div className="p-4">
+            <div className="whitespace-pre-line break-words text-gray-800">
+              {selectedContent}
+            </div>
+            <button
+              className="mt-6 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={() => setShowContentModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, itemId: null })}
+        title="Confirm Deletion"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-lg text-gray-800">Are you sure you want to delete this item?</p>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setDeleteConfirm({ open: false, itemId: null })}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

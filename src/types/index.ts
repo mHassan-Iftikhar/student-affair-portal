@@ -9,6 +9,7 @@ export interface User {
 }
 
 export interface Item {
+  imageLink: string | undefined;
   _id: string;
   id?: string;
   title: string;
@@ -19,6 +20,7 @@ export interface Item {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  reportType?: string;
 }
 
 export interface Story {
@@ -30,6 +32,9 @@ export interface Story {
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
+  category?: string;
+  date?: string;
+  time?: string;
 }
 
 export interface Notification {

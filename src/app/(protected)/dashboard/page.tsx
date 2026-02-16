@@ -134,7 +134,7 @@ const Dashboard: React.FC = () => {
       trend: "down",
     },
     {
-      title: "Total Stories",
+      title: "Total Events",
       value: stats?.totalStories || 0,
       icon: BookOpen,
       color: "from-purple-500 to-purple-600",

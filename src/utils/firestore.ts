@@ -78,10 +78,11 @@ export const addDocument = async (
     );
   }
 
+  const now = new Date().toISOString();
   const docRef = await addDoc(collection(db, collectionName), {
     ...data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: data.createdAt || now,
+    updatedAt: now,
   });
 
   return docRef.id;
@@ -342,32 +343,41 @@ export const addLostAndFoundItem = async (data: {
   description: string;
   date: string;
   time: string;
-  imageUrl: string;
+  imageLink: string;
   isClaimed: boolean;
   createdBy: string;
   claimedBy?: string;
   claimedAt?: string;
-  department?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }): Promise<string> => {
   return await addDocument("lostNfound", {
     ...data,
-    createdAt: serverTimestamp(),
   });
-};
+}
 
 // Events
-export const addEvent = async (data: {
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  image: string;
-  category: string;
-  department?: string;
-}): Promise<string> => {
+export const addEvent = async (
+  data: {
+    title: string;
+    content: string;
+    date: any;
+    time: any;
+    location: any;
+    category: any;
+    department: string;
+    isPublished: boolean;
+  },
+  imageData?: Base64Data,
+  videoData?: Base64Data
+): Promise<string> => {
+  let imageUrl: string | undefined = undefined;
+  if (imageData && imageData.data && imageData.mimeType) {
+    imageUrl = `data:${imageData.mimeType};base64,${imageData.data}`;
+  }
   return await addDocument("events", {
     ...data,
-    createdAt: serverTimestamp(),
+    ...(imageUrl ? { imageUrl } : {}),
   });
 };
 
@@ -381,10 +391,11 @@ export const addGroup = async (data: {
   iconColor: string; // Color
   membersCount: number;
   department?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }): Promise<string> => {
   return await addDocument("groups", {
     ...data,
-    createdAt: serverTimestamp(),
   });
 };
 
@@ -400,10 +411,11 @@ export const addUserWithProfilePicture = async (data: {
   fcmToken: string;
   isProfileCompleted: boolean;
   department?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }): Promise<string> => {
   return await addDocument("users", {
     ...data,
-    createdAt: serverTimestamp(),
   });
 };
 

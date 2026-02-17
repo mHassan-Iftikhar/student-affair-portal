@@ -98,25 +98,33 @@ async function analyzeImageWithGemini(
     const mimeType = imageUrl.split(";")[0].split(":")[1] || "image/jpeg";
 
     const prompt = `
-      University campus post image check.
-      Title: ${title || "no title"}
-      Content: ${content.slice(0, 300)}...
-      Category: ${topic}
+        You are an AI content verification system for a university student portal.
+        Your task is to analyze the submitted content and determine whether it is authentic, appropriate, and suitable for publishing on a university platform.
 
-      Evaluate:
-      1. Appropriate for university? (no nudity, gore, weapons, drugs, explicit content)
-      2. Relevant to the post?
-      3. Looks like real/authentic content?
+        Content to evaluate:
+        Title: ${title}
+        Description: ${content}
+        Type: ${topic}
+        ${imageUrl ? `Image provided: Yes` : `Image provided: No`}
 
-      Return JSON only:
-      {
-        "isAppropriate": boolean,
-        "isRelevant": boolean,
-        "description": "short description",
-        "confidence": number 0-100,
-        "reason": "brief explanation"
-      }
-    `;
+        Evaluation Criteria:
+        1. The title must be clear, relevant, and non-misleading.
+        2. The description must match the title and should not contain false, spam, abusive, or irrelevant information.
+        3. The content must not include hate speech, explicit language, or inappropriate material.
+        4. The content should appear realistic and related to university activities such as lost & found, events, or academic resources.
+        5. If an image is provided, evaluate whether it appears relevant to the title and description (based on context provided).
+
+        Important: Do NOT reject or penalize content based on length. Short titles and short descriptions are acceptable. Only evaluate authenticity, appropriateness, relevance, and policy compliance—not word count or character count.
+
+        Response Format (JSON only, no markdown formatting):
+        {
+          "isAuthentic": true | false,
+          "confidenceScore": 0-100,
+          "reason": "Short explanation of the decision"
+        }
+
+        Be strict, professional, and unbiased in your evaluation.
+      `;
 
     const result = await model.generateContent([
       prompt,

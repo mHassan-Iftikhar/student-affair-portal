@@ -95,35 +95,36 @@ const AcademicResources: React.FC = () => {
       );
 
       if (firestoreResources && firestoreResources.length > 0) {
-        setResources(
-          firestoreResources.map((r) => {
-            let fileBase64 = r.fileBase64 || "";
-            // If files.resource exists and is an image, use its dataURL
-            if (r.files && r.files.resource && r.files.resource.data && r.files.resource.mimeType && r.files.resource.mimeType.startsWith("image/")) {
-              fileBase64 = `data:${r.files.resource.mimeType};base64,${r.files.resource.data}`;
-            }
-            return {
-              _id: r.id || r._id || "",
-              title: r.title || "",
-              semester: r.semester || "",
-              subject: r.subject || "",
-              resourceType: r.resourceType || "",
-              fileName: r.fileName || "",
-              fileType: r.fileType || "",
-              fileSize: r.fileSize || "",
-              fileBase64,
-              uploadedBy: r.uploadedBy || "",
-              createdAt:
-                r.createdAt?.toDate?.()?.toISOString() ||
-                r.createdAt ||
-                new Date().toISOString(),
-              updatedAt:
-                r.updatedAt?.toDate?.()?.toISOString() ||
-                r.updatedAt ||
-                new Date().toISOString(),
-            } as Resource;
-          })
-        );
+        const mappedResources = firestoreResources.map((r) => {
+          let fileBase64 = r.fileBase64 || "";
+          // If files.resource exists and is an image, use its dataURL
+          if (r.files && r.files.resource && r.files.resource.data && r.files.resource.mimeType && r.files.resource.mimeType.startsWith("image/")) {
+            fileBase64 = `data:${r.files.resource.mimeType};base64,${r.files.resource.data}`;
+          }
+          return {
+            _id: r.id || r._id || "",
+            title: r.title || "",
+            semester: r.semester || "",
+            subject: r.subject || "",
+            resourceType: r.resourceType || "",
+            fileName: r.fileName || "",
+            fileType: r.fileType || "",
+            fileSize: r.fileSize || "",
+            fileBase64,
+            uploadedBy: r.uploadedBy || "",
+            createdAt:
+              r.createdAt?.toDate?.()?.toISOString() ||
+              r.createdAt ||
+              new Date().toISOString(),
+            updatedAt:
+              r.updatedAt?.toDate?.()?.toISOString() ||
+              r.updatedAt ||
+              new Date().toISOString(),
+          } as Resource;
+        });
+        // Sort by createdAt descending (newest first)
+        const sortedResources = [...mappedResources].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setResources(sortedResources);
       } else {
         // Mock data for demo
         setResources([

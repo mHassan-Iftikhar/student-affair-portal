@@ -58,33 +58,34 @@ const Stories: React.FC = () => {
         constraints.push(where("department", "==", department));
       }
       const firestoreStories = await getDocuments("events", constraints);
-      setStories(
-        firestoreStories.map((event: any) => {
-          let imageUrl = undefined;
-          if (event.files?.image?.dataURL) {
-            imageUrl = event.files.image.dataURL;
-          } else if (event.imageUrl) {
-            imageUrl = event.imageUrl;
-          }
-          return {
-            _id: event.id || event._id || "",
-            title: event.title || "",
-            content: event.content || "",
-            imageUrl,
-            videoUrl: event.videoUrl || event.files?.video?.dataURL || undefined,
-            isPublished: event.isPublished !== false,
-            createdAt:
-              event.createdAt?.toDate?.()?.toISOString() ||
-              event.createdAt ||
-              new Date().toISOString(),
-            updatedAt:
-              event.updatedAt?.toDate?.()?.toISOString() ||
-              event.updatedAt ||
-              new Date().toISOString(),
-            category: event.category || "General",
-          };
-        })
-      );
+      const mappedStories = firestoreStories.map((event: any) => {
+        let imageUrl = undefined;
+        if (event.files?.image?.dataURL) {
+          imageUrl = event.files.image.dataURL;
+        } else if (event.imageUrl) {
+          imageUrl = event.imageUrl;
+        }
+        return {
+          _id: event.id || event._id || "",
+          title: event.title || "",
+          content: event.content || "",
+          imageUrl,
+          videoUrl: event.videoUrl || event.files?.video?.dataURL || undefined,
+          isPublished: event.isPublished !== false,
+          createdAt:
+            event.createdAt?.toDate?.()?.toISOString() ||
+            event.createdAt ||
+            new Date().toISOString(),
+          updatedAt:
+            event.updatedAt?.toDate?.()?.toISOString() ||
+            event.updatedAt ||
+            new Date().toISOString(),
+          category: event.category || "General",
+        };
+      });
+      // Sort by createdAt descending (newest first)
+      const sortedStories = [...mappedStories].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setStories(sortedStories);
     } catch (error) {
       console.error("Failed to fetch stories:", error);
       toast.error("Failed to load stories");

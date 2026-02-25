@@ -93,7 +93,9 @@ const Items: React.FC = () => {
           reportType: item.reportType || "Lost",
         };
       });
-      setItems(mappedItems as Item[]);
+      // Sort by createdAt descending (newest first)
+      const sortedItems = [...mappedItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setItems(sortedItems as Item[]);
     } catch (error) {
       console.error("Failed to fetch items:", error);
       setError("Failed to load items. Please try again.");

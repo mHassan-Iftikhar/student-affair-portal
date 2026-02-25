@@ -47,7 +47,8 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     try {
       await login(data.email, data.password);
-      // Redirect is handled by useEffect when user state updates
+      // Explicit redirect for production reliability
+      router.push('/dashboard');
     } catch {
       // Error handling is done in the AuthContext
     } finally {

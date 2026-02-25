@@ -21,7 +21,7 @@ import {
   validateFileType,
   validateFileSize,
   formatFileSize,
-  downloadBase64File,
+  downloadBase64,
   Base64Data,
 } from "../../../utils/base64Utils";
 import {
@@ -384,20 +384,22 @@ const AcademicResources: React.FC = () => {
           resource.id || resource._id || "",
         );
         if (files?.resource) {
-          downloadBase64File(files.resource);
+          downloadBase64(
+            files.resource.data,
+            files.resource.fileName,
+            files.resource.mimeType
+          );
           toast.success("Download started");
           return;
         }
       }
       // Fallback to fileBase64 (old format)
       if (resource.fileBase64) {
-        downloadBase64File({
-          data: resource.fileBase64,
-          fileName: resource.fileName,
-          mimeType: resource.fileType,
-          size: 0, // Size is optional, set to 0 or actual size if available
-          timestamp: Date.now(),
-        });
+        downloadBase64(
+          resource.fileBase64,
+          resource.fileName,
+          resource.fileType
+        );
         toast.success("Download started");
         return;
       }

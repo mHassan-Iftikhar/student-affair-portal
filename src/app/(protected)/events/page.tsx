@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import {
   fileToBase64,
   base64ToDataURL,
+  buildImageUrl,
   validateFileType,
   validateFileSize,
   formatFileSize,
@@ -66,6 +67,7 @@ const Stories: React.FC = () => {
           imageUrl = event.imageUrl;
         }
         return {
+          id: event.id || event._id || "",
           _id: event.id || event._id || "",
           title: event.title || "",
           content: event.content || "",
@@ -108,7 +110,6 @@ const Stories: React.FC = () => {
     setValue("content", event.content);
     setValue("imageUrl", event.imageUrl);
     setValue("videoUrl", event.videoUrl);
-    setValue("isPublished", event.isPublished);
     setValue("category", event.category);
     // Date
     let dateValue = "";
@@ -249,6 +250,10 @@ const Stories: React.FC = () => {
 
       if (selectedImageFile) {
         imageData = await fileToBase64(selectedImageFile);
+        // Remove data URL prefix if present
+        if (imageData && imageData.data && imageData.data.includes(",")) {
+          imageData.data = imageData.data.split(",")[1];
+        }
       }
 
       // --- AI Content Moderation Block ---
@@ -268,7 +273,7 @@ const Stories: React.FC = () => {
 
       // 2. Check content matches image using AI moderation endpoint
       const imageUrlToMod = imageData && imageData.mimeType.startsWith("image/") ? base64ToDataURL(imageData) : undefined;
-      if (imageUrlToMod || data.content || data.title) {
+      if ((imageData && imageData.data) || data.content || data.title) {
         const moderationToastId = toast.loading("AI is verifying content...");
         try {
           const modResponse = await fetch("/api/content-moderation", {
@@ -299,62 +304,116 @@ const Stories: React.FC = () => {
       }
       // --- End AI Content Moderation Block ---
 
-      if (editingevent) {
-        // Update existing event
-        const updateData: any = {
-          title: data.title,
-          content: data.content,
-          isPublished: data.isPublished !== undefined ? data.isPublished : false,
-          date: (data as any).date,
-          time: (data as any).time,
-          category: (data as any).category,
-        };
-        const files: any = {};
-        if (imageData) files.image = imageData;
-        if (videoData) files.video = videoData;
-        await updateDocumentWithBase64(
-          "events",
-          editingevent._id || "",
-          updateData,
-          Object.keys(files).length > 0 ? files : undefined,
-        );
-        // Log the update action
-        if (user) {
-          await logUpdate(
-            { uid: user.uid, email: user.email || "unknown" },
-            "STORIES",
-            editingevent._id || "",
-            { title: data.title, isPublished: data.isPublished },
+      // Only store in Firebase if isPublished is true
+      if (data.isPublished) {
+        if (editingevent) {
+          // If previously unpublished, add to Firebase as new
+          if (!editingevent._id) {
+            // Defensive: shouldn't happen, but fallback
+            toast.error("Missing event ID. Cannot publish.");
+            setIsSubmitting(false);
+            return;
+          }
+          // If event was not in Firebase, add it
+          if (!editingevent.isPublished) {
+            // Add as new event
+            const neweventId: any = await addEvent(
+              {
+                title: data.title || editingevent.title,
+                content: data.content || editingevent.content,
+                date: (data as any).date || editingevent.date || new Date().toISOString().split("T")[0],
+                time: (data as any).time || editingevent.time || new Date().toLocaleTimeString(),
+                location: (data as any).location || "Main Campus",
+                category: ((data as any).category ? (data as any).category.charAt(0).toUpperCase() + (data as any).category.slice(1) : (editingevent.category ? editingevent.category.charAt(0).toUpperCase() + editingevent.category.slice(1) : "General")),
+                department: department || "General",
+                isPublished: true,
+              },
+              imageData && imageData.data ? imageData : undefined,
+            );
+            if (user) {
+              await logCreate(
+                { uid: user.uid, email: user.email || "unknown" },
+                "EVENTS",
+                neweventId,
+                { title: data.title, isPublished: true },
+              );
+            }
+            toast.success("Event published successfully");
+            await fetchStories();
+          } else {
+            // Update existing event in Firebase
+            const updateData: any = {
+              title: data.title,
+              content: data.content,
+              isPublished: true,
+              date: (data as any).date,
+              time: (data as any).time,
+              category: (data as any).category ? (data as any).category.charAt(0).toUpperCase() + (data as any).category.slice(1) : undefined,
+            };
+            const files: any = {};
+            if (imageData && imageData.data) files.image = imageData;
+            if (videoData) files.video = videoData;
+            await updateDocumentWithBase64(
+              "events",
+              editingevent._id || "",
+              updateData,
+              Object.keys(files).length > 0 ? files : undefined,
+            );
+            if (user) {
+              await logUpdate(
+                { uid: user.uid, email: user.email || "unknown" },
+                "STORIES",
+                editingevent._id || "",
+                { title: data.title, isPublished: true },
+              );
+            }
+            toast.success("Event updated successfully");
+            await fetchStories();
+          }
+        } else {
+          // Create new event
+          const neweventId: any = await addEvent(
+            {
+              title: data.title || "",
+              content: data.content || "",
+              date: (data as any).date || new Date().toISOString().split("T")[0],
+              time: (data as any).time || new Date().toLocaleTimeString(),
+              location: (data as any).location || "Main Campus",
+              category: (data as any).category ? (data as any).category.charAt(0).toUpperCase() + (data as any).category.slice(1) : "General",
+              department: department || "General",
+              isPublished: true,
+            },
+            imageData && imageData.data ? imageData : undefined,
           );
+          if (user) {
+            await logCreate(
+              { uid: user.uid, email: user.email || "unknown" },
+              "EVENTS",
+              neweventId,
+              { title: data.title, isPublished: true },
+            );
+          }
+          toast.success("Event created successfully");
+          await fetchStories();
         }
-        toast.success("event updated successfully");
-        await fetchStories();
       } else {
-        // Create new event
-        const neweventId: any = await addEvent(
-          {
-            title: data.title || "",
-            content: data.content || "",
-            date: (data as any).date || new Date().toISOString().split("T")[0],
-            time: (data as any).time || new Date().toLocaleTimeString(),
-            location: (data as any).location || "Main Campus",
-            category: (data as any).category || "General",
-            department: department || "General",
-            isPublished: data.isPublished !== undefined ? data.isPublished : false,
-          },
-          imageData ? imageData : undefined,
-        );
-        // Log the create action
-        if (user) {
-          await logCreate(
-            { uid: user.uid, email: user.email || "unknown" },
-            "EVENTS",
-            neweventId,
-            { title: data.title, isPublished: data.isPublished },
-          );
+        // If not published, remove from Firebase but keep in UI
+        if (editingevent && editingevent._id) {
+          await deleteDocument("events", editingevent._id);
+          if (user) {
+            await logDelete(
+              { uid: user.uid, email: user.email || "unknown" },
+              "EVENTS",
+              editingevent._id,
+              { action: "deleted_event_event" },
+            );
+          }
+          toast.success("Event unpublished (removed from database, still visible here)");
+          // Update local state to mark as unpublished
+          setStories((prev) => prev.map(ev => ev._id === editingevent._id ? { ...ev, isPublished: false } : ev));
+        } else {
+          toast.success("Event not saved (status is Draft)");
         }
-        toast.success("Event created successfully");
-        await fetchStories();
       }
 
       setIsModalOpen(false);
@@ -409,7 +468,8 @@ const Stories: React.FC = () => {
           <button
             className="text-blue-600 hover:text-blue-900 underline"
             onClick={() => {
-              setSelectedImageUrl(event.imageUrl);
+              const imgSrc = buildImageUrl(event.imageUrl || "");
+              setSelectedImageUrl(imgSrc);
               setShowImageModal(true);
             }}
             type="button"
@@ -425,15 +485,68 @@ const Stories: React.FC = () => {
       key: "isPublished",
       header: "Status",
       render: (event: Event) => (
-        <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-            event.isPublished
-              ? "bg-green-100 text-green-800"
-              : "bg-yellow-100 text-yellow-800"
-          }`}
-        >
-          {event.isPublished ? "Published" : "Draft"}
-        </span>
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            aria-label={event.isPublished ? "Unpublish" : "Publish"}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${event.isPublished ? 'bg-green-500' : 'bg-gray-300'}`}
+            onClick={async () => {
+              try {
+                if (event.isPublished) {
+                  // Remove from Firebase, keep in UI
+                  await deleteDocument("events", event._id || event.id || "");
+                  if (user) {
+                    await logDelete(
+                      { uid: user.uid, email: user.email || "unknown" },
+                      "EVENTS",
+                      event._id || event.id || "",
+                      { action: "deleted_event_event" },
+                    );
+                  }
+                  toast.success("Event unpublished (removed from database, still visible here)");
+                  setStories((prev) => prev.map(ev =>
+                    ev._id === event._id ? { ...ev, isPublished: false } : ev
+                  ));
+                } else {
+                  // Show modal to re-publish (add to Firebase) and pre-fill form
+                  setEditingevent(event);
+                  setValue("title", event.title);
+                  setValue("content", event.content);
+                  setValue("imageUrl", event.imageUrl);
+                  setValue("videoUrl", event.videoUrl);
+                  setValue("isPublished", true);
+                  setValue("category", event.category);
+                  // Date
+                  let dateValue = "";
+                  if (event.date) {
+                    dateValue = event.date.length > 10 ? event.date.split("T")[0] : event.date;
+                  } else if (event.createdAt) {
+                    dateValue = event.createdAt.split("T")[0];
+                  }
+                  setValue("date", dateValue);
+                  // Time
+                  let timeValue = "";
+                  if (event.time) {
+                    const t = event.time;
+                    timeValue = t.length > 5 ? t.slice(0, 5) : t;
+                  }
+                  setValue("time", timeValue);
+                  setSelectedImageFile(null);
+                  setImagePreviewUrl(event.imageUrl || "");
+                  setIsModalOpen(true);
+                  toast.success("Please update and save to publish this event again.");
+                }
+              } catch (err) {
+                toast.error("Failed to update status");
+              }
+            }}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${event.isPublished ? 'translate-x-5' : 'translate-x-1'}`}
+            />
+          </button>
+          <span className={`text-xs font-semibold ${event.isPublished ? 'text-green-700' : 'text-yellow-700'}`}>{event.isPublished ? 'Published' : 'Draft'}</span>
+        </div>
       ),
     },
     {
@@ -634,7 +747,7 @@ const Stories: React.FC = () => {
             ) : (editingevent && editingevent.imageUrl) ? (
               <div className="mt-2">
                 <img
-                  src={editingevent.imageUrl}
+                  src={buildImageUrl(editingevent.imageUrl)}
                   alt="Current"
                   className="h-32 w-auto object-cover rounded-lg border"
                 />
@@ -643,16 +756,6 @@ const Stories: React.FC = () => {
             ) : null}
           </div>
 
-          <div className="flex items-center">
-            <input
-              {...register("isPublished")}
-              type="checkbox"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label className="ml-2 block text-sm text-gray-700">
-              Published
-            </label>
-          </div>
 
           <div className="flex justify-end space-x-3 pt-4">
             <button

@@ -371,7 +371,7 @@ export const addEvent = async (
 ): Promise<string> => {
   let imageUrl: string | undefined = undefined;
   if (imageData && imageData.data && imageData.mimeType) {
-    imageUrl = `data:${imageData.mimeType};base64,${imageData.data}`;
+    imageUrl = imageData.data; // Store only raw base64, no prefix
   }
   return await addDocument("events", {
     ...data,

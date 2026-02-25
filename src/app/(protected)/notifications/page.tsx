@@ -37,7 +37,6 @@ interface FirebaseNotification {
   sentAt: string | Date;
   sentBy?: string;
   sentByEmail?: string;
-  priority?: "low" | "normal" | "high";
   imageText?: string;
 }
 
@@ -51,7 +50,6 @@ const Notifications: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<
@@ -93,38 +91,24 @@ const Notifications: React.FC = () => {
   }, []);
 
   // Fetch users from Firebase
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Invalid file type. Please upload an image.");
-        return;
+  const fetchUsers = async () => {
+    try {
+      // Fetch users from Firebase
+      const firestoreUsers = await getDocuments("users");
+      if (firestoreUsers && firestoreUsers.length > 0) {
+        setUsers(
+          firestoreUsers.map((u) => ({
+            ...u,
+            _id: u.id,
+          })) as User[],
+        );
       }
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File too large. Max 5MB.");
-        return;
-      }
-
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error fetching users:", error);
     }
   };
 
+  // Fetch notifications from Firebase
   const fetchNotifications = async () => {
     setLoading(true);
     try {
@@ -145,22 +129,10 @@ const Notifications: React.FC = () => {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      // Fetch users from Firebase
-      const firestoreUsers = await getDocuments("users");
-      if (firestoreUsers && firestoreUsers.length > 0) {
-        setUsers(
-          firestoreUsers.map((u) => ({
-            ...u,
-            _id: u.id,
-          })) as User[],
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    }
-  };
+  useEffect(() => {
+    fetchUsers();
+    fetchNotifications();
+  }, []);
 
   const handleEdit = (notification: FirebaseNotification) => {
     setEditingNotification(notification);
@@ -171,9 +143,6 @@ const Notifications: React.FC = () => {
       notification.targetUsers?.length > 0 ? "specific" : "all",
     );
     setValue("userIds", notification.targetUsers || []);
-    setValue("priority", notification.priority || "normal");
-    setPreviewUrl(notification.imageText || "");
-    setSelectedFile(null); // Clear selected file when editing existing
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -205,33 +174,6 @@ const Notifications: React.FC = () => {
     try {
       const targetUsers = data.targetType === "all" ? [] : data.userIds || [];
 
-      let imageData: any = undefined;
-      let imageText: string | undefined = undefined;
-
-      if (selectedFile) {
-        const base64 = (await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (typeof reader.result === "string") {
-              resolve(reader.result);
-            } else {
-              reject(new Error("Failed to read file as string"));
-            }
-          };
-          reader.onerror = () => reject(new Error("File read error"));
-          reader.readAsDataURL(selectedFile);
-        })) as string;
-
-        imageData = {
-          data: base64.split(",")[1],
-          mimeType: selectedFile.type,
-          fileName: selectedFile.name,
-          size: selectedFile.size,
-          timestamp: Date.now(),
-        };
-        imageText = base64;
-      }
-
       if (editingNotification?.id) {
         const updateData: any = {
           title: data.title,
@@ -239,7 +181,6 @@ const Notifications: React.FC = () => {
           targetUsers: targetUsers,
           priority: data.priority || "normal",
         };
-        if (imageText) updateData.imageText = imageText;
 
         await updateDocument(
           "notifications",
@@ -260,8 +201,6 @@ const Notifications: React.FC = () => {
           targetUsers: targetUsers,
           sentBy: user?.uid || "admin",
           sentByEmail: user?.email || "admin@example.com",
-          imageData,
-          imageText,
           priority: data.priority || "normal",
         });
 
@@ -273,7 +212,6 @@ const Notifications: React.FC = () => {
               targetUsers.length === 0
                 ? "All users"
                 : `${targetUsers.length} specific users`,
-            hasImage: !!imageData || !!imageText,
           });
         }
         toast.success("Notification sent successfully");
@@ -281,8 +219,6 @@ const Notifications: React.FC = () => {
 
       reset();
       setEditingNotification(null);
-      setSelectedFile(null);
-      setPreviewUrl("");
       // Always refresh the list after save
       fetchNotifications();
     } catch (err) {
@@ -422,24 +358,6 @@ const Notifications: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Notification message"
             />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Priority
-              </label>
-              <select
-                {...register("priority")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="normal">Normal</option>
-                <option value="low">Low</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-
-            {/* Removed notification image upload UI */}
           </div>
 
           {/* Removed notification image preview UI */}

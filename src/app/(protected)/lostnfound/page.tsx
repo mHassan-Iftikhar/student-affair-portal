@@ -23,6 +23,7 @@ import {
   validateFileSize,
   formatFileSize,
   Base64Data,
+  buildImageUrl,
 } from "../../../utils/base64Utils";
 import {
   addLostAndFoundItem,
@@ -122,7 +123,6 @@ const Items: React.FC = () => {
     // setValue for price removed
     setValue("category", item.category);
     setValue("imageLink", item.imageLink || item.imageUrl || "");
-    setValue("isActive", item.isActive);
 
     // Check if category is a predefined one or custom
     const predefinedCategories = [
@@ -210,21 +210,15 @@ const Items: React.FC = () => {
   const onSubmit = async (data: Partial<Item>) => {
     setIsSubmitting(true);
     try {
-      // Use custom category if "other" is selected
-      const finalCategory =
-        selectedCategory === "other" ? customCategory : data.category;
-
+      let finalCategory = selectedCategory === "other" ? customCategory : data.category;
+      if (finalCategory && typeof finalCategory === "string") {
+        finalCategory = finalCategory[0].toUpperCase() + finalCategory.slice(1);
+      }
       let imageData: Base64Data | undefined;
       if (selectedFile) {
         imageData = await fileToBase64(selectedFile);
       }
-
-      const imageUrlToMod =
-        imageData && imageData.mimeType.startsWith("image/")
-          ? base64ToDataURL(imageData)
-          : data.imageUrl;
-
-      // Integrate AI Content Moderation
+      const imageUrlToMod = imageData && imageData.mimeType.startsWith("image/") ? base64ToDataURL(imageData) : data.imageUrl;
       if (imageUrlToMod || data.description || data.title) {
         const moderationToastId = toast.loading("AI is verifying content...");
         try {
@@ -238,63 +232,80 @@ const Items: React.FC = () => {
               imageUrl: imageUrlToMod,
             }),
           });
-
           if (!modResponse.ok) {
             throw new Error("AI Moderation service unavailable");
           }
-
           const modResult = await modResponse.json();
           toast.dismiss(moderationToastId);
-
           if (!modResult.isAuthentic) {
-            toast.error(`Content Flagged: ${modResult.reason}`, {
-              duration: 6000,
-            });
+            toast.error(`Content Flagged: ${modResult.reason}`, { duration: 6000 });
             setIsSubmitting(false);
-            return; // Stop submission
+            return;
           }
         } catch (modError) {
           console.error("Moderation error:", modError);
           toast.dismiss(moderationToastId);
-          // We can decide to block or allow on AI failure. Let's allow but log a warning.
           toast.error("AI check failed, proceeding with caution...");
         }
       }
-
       if (editingItem) {
-        // Update using Firestore
-        const updateData: any = {
-          title: data.title,
-          description: data.description,
-          // price removed
-          category: finalCategory,
-          isActive: data.isActive !== undefined ? data.isActive : true,
-        };
-
-        const files: any = {};
-        if (imageData) {
-          files.image = imageData;
-        }
-
-        await updateDocumentWithBase64(
-          "lostNfound",
-          editingItem._id || editingItem.id || "",
-          updateData,
-          Object.keys(files).length > 0 ? files : undefined,
-        );
-
-        // Log the update action
-        if (user) {
-          await logUpdate(
-            { uid: user.uid, email: user.email || "unknown" },
-            "ITEMS",
+        if (!editingItem.isActive) {
+          // Create new item
+          const newItemId = await addLostAndFoundItem({
+            title: data.title || editingItem.title || "",
+            reportType: reportType || editingItem.reportType || "Lost",
+            description: data.description || editingItem.description || "",
+            date: (data as any).date || new Date().toISOString().split("T")[0],
+            time: (data as any).time || new Date().toLocaleTimeString(),
+            imageLink: imageData && imageData.data ? imageData.data : editingItem.imageLink || "",
+            isClaimed: false,
+            createdBy: user?.email || "Admin",
+            ...(finalCategory ? { category: finalCategory } : {}),
+          });
+          if (user) {
+            await logCreate(
+              { uid: user.uid, email: user.email || "unknown" },
+              "ITEMS",
+              newItemId,
+              { title: data.title, category: finalCategory },
+            );
+          }
+          toast.success("Item published successfully");
+          // Only update the toggled item in UI
+          setItems((prev) => prev.map(it =>
+            it._id === editingItem._id ? { ...it, isActive: true } : it
+          ));
+        } else {
+          // Update using Firestore
+          const updateData: any = {
+            title: data.title,
+            description: data.description,
+            category: finalCategory ?? "",
+            isActive: data.isActive !== undefined ? data.isActive : true,
+          };
+          const files: any = {};
+          if (imageData) {
+            files.image = imageData;
+          }
+          await updateDocumentWithBase64(
+            "lostNfound",
             editingItem._id || editingItem.id || "",
-            { title: data.title, category: finalCategory },
+            updateData,
+            Object.keys(files).length > 0 ? files : undefined,
           );
+          if (user) {
+            await logUpdate(
+              { uid: user.uid, email: user.email || "unknown" },
+              "ITEMS",
+              editingItem._id || editingItem.id || "",
+              { title: data.title, category: finalCategory },
+            );
+          }
+          toast.success("Item updated successfully");
+          setItems((prev) => prev.map(it =>
+            it._id === editingItem._id ? { ...it, ...updateData } : it
+          ));
         }
-
-        toast.success("Item updated successfully");
-        fetchItems();
       } else {
         // Create new item using Firestore
         const newItemId = await addLostAndFoundItem({
@@ -303,12 +314,11 @@ const Items: React.FC = () => {
           description: data.description || "",
           date: (data as any).date || new Date().toISOString().split("T")[0],
           time: (data as any).time || new Date().toLocaleTimeString(),
-          imageLink: typeof previewUrl === "string" ? previewUrl : "",
+          imageLink: imageData && imageData.data ? imageData.data : "",
           isClaimed: false,
           createdBy: user?.email || "Admin",
+          ...(finalCategory ? { category: finalCategory } : {}),
         });
-
-        // Log the create action
         if (user) {
           await logCreate(
             { uid: user.uid, email: user.email || "unknown" },
@@ -317,11 +327,10 @@ const Items: React.FC = () => {
             { title: data.title, category: finalCategory },
           );
         }
-
         toast.success("Item created successfully");
+        // Add the new item to UI (optional: refetch or push to items)
         fetchItems();
       }
-
       setIsModalOpen(false);
       reset();
       setSelectedCategory("");
@@ -372,11 +381,13 @@ const Items: React.FC = () => {
       key: "imageLink",
       header: "Image",
       render: (item: Item) => (
-        item.imageLink ? (
+        (item.imageLink || item.imageUrl) ? (
           <button
             className="text-blue-600 hover:text-blue-900 underline"
             onClick={() => {
-              setSelectedImageUrl(item.imageLink);
+              const rawBase64 = item.imageLink || item.imageUrl;
+              const imgSrc = rawBase64 ? buildImageUrl(rawBase64) : undefined;
+              setSelectedImageUrl(imgSrc);
               setShowImageModal(true);
             }}
             type="button"
@@ -391,16 +402,58 @@ const Items: React.FC = () => {
     {
       key: "isActive",
       header: "Status",
+      // Set a fixed width for the status column
+      className: "w-40 min-w-[10rem]", // Tailwind: width 10rem
       render: (item: Item) => (
-        <span
-          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-            item.isActive !== false
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          }`}
-        >
-          {item.isActive !== false ? "Active" : "Inactive"}
-        </span>
+        <div className="flex items-center justify-center space-x-2 w-full">
+          <button
+            type="button"
+            aria-label={item.isActive ? "Deactivate" : "Activate"}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${item.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
+            style={{ minWidth: 44 }}
+            onClick={async () => {
+              try {
+                if (item.isActive) {
+                  // Remove from Firebase, keep in UI
+                  await deleteDocument("lostNfound", item._id || item.id || "");
+                  if (user) {
+                    await logDelete(
+                      { uid: user.uid, email: user.email || "unknown" },
+                      "ITEMS",
+                      item._id || item.id || "",
+                      { action: "deleted_lost_found_item" },
+                    );
+                  }
+                  toast.success("Item unpublished (removed from database, still visible here)");
+                  setItems((prev) => prev.map(it =>
+                    it._id === item._id ? { ...it, isActive: false } : it
+                  ));
+                } else {
+                  // Show modal to re-publish (add to Firebase) and pre-fill form
+                  setEditingItem(item);
+                  setValue("title", item.title);
+                  setValue("description", item.description);
+                  setValue("category", item.category);
+                  setValue("imageLink", item.imageLink || item.imageUrl || "");
+                  setValue("reportType", item.reportType || "Lost");
+                  setSelectedCategory(item.category);
+                  setCustomCategory("");
+                  setSelectedFile(null);
+                  setPreviewUrl(item.imageLink || item.imageUrl || "");
+                  setIsModalOpen(true);
+                  toast.success("Please update and save to publish this item again.");
+                }
+              } catch (err) {
+                toast.error("Failed to update status");
+              }
+            }}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${item.isActive ? 'translate-x-5' : 'translate-x-1'}`}
+            />
+          </button>
+          <span className={`text-xs font-semibold w-14 text-center ${item.isActive ? 'text-green-700' : 'text-red-700'}`}>{item.isActive ? 'Active' : 'Inactive'}</span>
+        </div>
       ),
     },
     {
@@ -562,7 +615,7 @@ const Items: React.FC = () => {
             <p className="mt-1 text-xs text-gray-500">
               Max size: 1MB. Supported: JPG, PNG, WEBP
             </p>
-            {selectedFile && previewUrl && (
+            {selectedFile && previewUrl ? (
               <div className="mt-2">
                 <img
                   src={previewUrl}
@@ -573,18 +626,18 @@ const Items: React.FC = () => {
                   {selectedFile.name} ({formatFileSize(selectedFile.size)})
                 </p>
               </div>
-            )}
+            ) : editingItem && (editingItem.imageLink || editingItem.imageUrl) ? (
+              <div className="mt-2">
+                <img
+                  src={buildImageUrl(editingItem.imageLink || editingItem.imageUrl || "")}
+                  alt="Current"
+                  className="h-32 w-32 object-cover rounded-lg border"
+                />
+                <p className="text-xs text-blue-600 mt-1">Current Image</p>
+              </div>
+            ) : null}
           </div>
 
-          <div className="flex items-center">
-            <input
-              {...register("isActive")}
-              type="checkbox"
-              defaultChecked={true}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label className="ml-2 block text-sm text-gray-700">Active</label>
-          </div>
 
           <div className="flex justify-end space-x-3 pt-4">
             <button
@@ -678,3 +731,7 @@ const Items: React.FC = () => {
 };
 
 export default Items;
+function setShowImageModal(arg0: boolean) {
+  throw new Error("Function not implemented.");
+}
+

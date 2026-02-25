@@ -24,6 +24,7 @@ export interface Item {
 }
 
 export interface Story {
+  id: string;
   _id: string;
   title: string;
   content: string;

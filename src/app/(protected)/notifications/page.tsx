@@ -193,7 +193,7 @@ const Notifications: React.FC = () => {
       toast.success("Notification deleted successfully");
       setIsDeleteModalOpen(false);
       setNotificationToDelete(null);
-      if (!isLiveMode) fetchNotifications();
+      fetchNotifications(); // Always refresh after delete
     } catch (error) {
       console.error("Failed to delete notification:", error);
       toast.error("Failed to delete notification");
@@ -283,11 +283,8 @@ const Notifications: React.FC = () => {
       setEditingNotification(null);
       setSelectedFile(null);
       setPreviewUrl("");
-
-      // If not in live mode, refresh the list
-      if (!isLiveMode) {
-        fetchNotifications();
-      }
+      // Always refresh the list after save
+      fetchNotifications();
     } catch (err) {
       const error = err as Error;
       console.error("Failed to save notification:", error);

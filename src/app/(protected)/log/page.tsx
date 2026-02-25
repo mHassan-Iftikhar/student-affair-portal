@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Activity, RefreshCw } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import LoadingSpinner from '../../../components/UI/LoadingSpinner';
 import Table from '../../../components/UI/Table';
@@ -29,13 +29,14 @@ const formatTimestamp = (value: any): string => {
   return format(date, 'MMM dd, yyyy HH:mm');
 };
 
+
 const AuditLogPage: React.FC = () => {
   const [rows, setRows] = useState<AuditLogRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
 
   const loadLogs = async () => {
-    setRefreshing(true);
     try {
       const logs = await getAuditLogs({ limit: 100 });
       const mapped = logs.map((log: any) => ({
@@ -53,7 +54,6 @@ const AuditLogPage: React.FC = () => {
       setRows([]);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -86,6 +86,31 @@ const AuditLogPage: React.FC = () => {
     );
   }
 
+  // Filtered rows based on search
+  const filteredRows = rows.filter((row) => {
+    const term = searchTerm.toLowerCase();
+    // Try to extract user email from details if present
+    let userEmail = '';
+    try {
+      if (row.details && row.details.startsWith('{')) {
+        const detailsObj = JSON.parse(row.details);
+        if (detailsObj && typeof detailsObj === 'object') {
+          userEmail = detailsObj.email || detailsObj.userEmail || '';
+        }
+      }
+    } catch (e) {
+      // ignore JSON parse errors
+    }
+    return (
+      row.adminEmail.toLowerCase().includes(term) ||
+      (userEmail && userEmail.toLowerCase().includes(term)) ||
+      row.action.toLowerCase().includes(term) ||
+      row.resource.toLowerCase().includes(term) ||
+      (row.resourceId && row.resourceId.toLowerCase().includes(term)) ||
+      (row.details && row.details.toLowerCase().includes(term))
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -98,19 +123,22 @@ const AuditLogPage: React.FC = () => {
             <p className="text-gray-600 mt-1">Recent administrative actions</p>
           </div>
         </div>
-        <button
-          onClick={loadLogs}
-          disabled={refreshing}
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-60"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-        </button>
+      </div>
+
+      {/* Search Bar */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by admin, action, resource, or details..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full sm:w-96 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-4">
-          <Table data={rows} columns={columns} />
+          <Table data={filteredRows} columns={columns} />
         </div>
       </div>
     </div>

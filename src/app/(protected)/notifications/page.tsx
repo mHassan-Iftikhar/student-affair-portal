@@ -51,7 +51,6 @@ const Notifications: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLiveMode, setIsLiveMode] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -74,28 +73,24 @@ const Notifications: React.FC = () => {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
-    if (isLiveMode) {
-      unsubscribe = subscribeToNotifications((docs) => {
-        const mappedNotifications = docs.map((doc) => ({
-          ...doc,
-          id: doc.id,
-          targetUsers: doc.targetUsers || [],
-          deliveryCount: doc.deliveryCount || 0,
-          sentAt: doc.sentAt?.toDate?.() || doc.sentAt || new Date(),
-        })) as FirebaseNotification[];
-        setNotifications(mappedNotifications);
-        setLoading(false);
-      }, 100);
-    } else {
-      fetchNotifications();
-    }
+    unsubscribe = subscribeToNotifications((docs) => {
+      const mappedNotifications = docs.map((doc) => ({
+        ...doc,
+        id: doc.id,
+        targetUsers: doc.targetUsers || [],
+        deliveryCount: doc.deliveryCount || 0,
+        sentAt: doc.sentAt?.toDate?.() || doc.sentAt || new Date(),
+      })) as FirebaseNotification[];
+      setNotifications(mappedNotifications);
+      setLoading(false);
+    }, 100);
 
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
     };
-  }, [isLiveMode]);
+  }, []);
 
   // Fetch users from Firebase
   useEffect(() => {
@@ -326,15 +321,7 @@ const Notifications: React.FC = () => {
         </span>
       ),
     },
-    {
-      key: "deliveryCount",
-      header: "Delivered",
-      render: (notification: FirebaseNotification) => (
-        <span className="text-sm font-medium">
-          {notification.deliveryCount || 0}
-        </span>
-      ),
-    },
+    // Removed Delivered column
     {
       key: "sentAt",
       header: "Sent At",
@@ -455,46 +442,10 @@ const Notifications: React.FC = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notification Image (Optional)
-              </label>
-              <div className="mt-1 flex items-center space-x-4">
-                <label className="cursor-pointer bg-white border border-gray-300 rounded-md py-2 px-3 flex items-center space-x-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  <ImageIcon className="h-4 w-4 text-gray-400" />
-                  <span>{selectedFile ? "Change Image" : "Upload Image"}</span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
-                </label>
-                {selectedFile && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setPreviewUrl("");
-                    }}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            </div>
+            {/* Removed notification image upload UI */}
           </div>
 
-          {previewUrl && (
-            <div className="relative w-full max-w-xs aspect-video rounded-lg overflow-hidden border border-gray-200">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          {/* Removed notification image preview UI */}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -621,31 +572,6 @@ const Notifications: React.FC = () => {
             Notification History
           </h2>
           <div className="flex items-center space-x-4">
-            {/* Live/Static Toggle */}
-            <button
-              onClick={() => setIsLiveMode(!isLiveMode)}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                isLiveMode
-                  ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              <Radio
-                className={`h-4 w-4 ${isLiveMode ? "animate-pulse" : ""}`}
-              />
-              <span>{isLiveMode ? "Live" : "Static"}</span>
-            </button>
-
-            {/* Refresh Button */}
-            {!isLiveMode && (
-              <button
-                onClick={fetchNotifications}
-                className="flex items-center space-x-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Refresh</span>
-              </button>
-            )}
 
             <span className="text-sm text-gray-500">
               {notifications.length} notification

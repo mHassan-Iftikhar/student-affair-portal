@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Eye, Upload, Video } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { Story as Event } from "../../../types";
 import Table from "../../../components/UI/Table";
 import Modal from "../../../components/UI/Modal";
@@ -31,6 +31,8 @@ import { useAuth } from "../../../context/AuthContext";
 const Stories: React.FC = () => {
   const { user, department } = useAuth();
   const [stories, setStories] = useState<Event[]>([]);
+  // Search state for events
+  const [eventSearch, setEventSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingevent, setEditingevent] = useState<Event | null>(null);
@@ -473,21 +475,36 @@ const Stories: React.FC = () => {
     );
   }
 
+  // Filter events by title
+  const filteredStories = stories.filter((event) =>
+    event.title.toLowerCase().includes(eventSearch.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Events Management</h1>
-        <button
-          onClick={handleAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Event</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+          {/* Search Bar */}
+          <input
+            type="text"
+            placeholder="Search events by title..."
+            value={eventSearch}
+            onChange={(e) => setEventSearch(e.target.value)}
+            className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleAdd}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Event</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <Table data={stories} columns={columns} />
+        <Table data={filteredStories} columns={columns} />
       </div>
 
       <Modal

@@ -94,6 +94,10 @@ const Dashboard: React.FC = () => {
     }
   };
 
+
+  // Search state for recent activity
+  const [activitySearch, setActivitySearch] = useState("");
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -198,34 +202,53 @@ const Dashboard: React.FC = () => {
             </div>
             <span className="text-sm text-gray-500">Last 24 hours</span>
           </div>
+          {/* Search bar for activity */}
+          <div className="mt-4">
+            <input
+              type="text"
+              placeholder="Search activity by action, resource, or admin..."
+              value={activitySearch}
+              onChange={e => setActivitySearch(e.target.value)}
+              className="w-full sm:w-96 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
         <div className="p-6">
           {stats?.recentActivity && stats.recentActivity.length > 0 ? (
             <div className="space-y-3">
-              {stats.recentActivity.map((activity, index) => (
-                <div
-                  key={activity._id}
-                  className="flex items-center space-x-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg hover:shadow-sm transition-all duration-200 border border-gray-100"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Activity className="h-5 w-5 text-blue-600" />
+              {stats.recentActivity
+                .filter(activity => {
+                  const term = activitySearch.toLowerCase();
+                  return (
+                    activity.action.toLowerCase().includes(term) ||
+                    activity.resource.toLowerCase().includes(term) ||
+                    (activity.adminEmail && activity.adminEmail.toLowerCase().includes(term))
+                  );
+                })
+                .map((activity, index) => (
+                  <div
+                    key={activity._id}
+                    className="flex items-center space-x-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg hover:shadow-sm transition-all duration-200 border border-gray-100"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <Activity className="h-5 w-5 text-blue-600" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {activity.action} on {activity.resource}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        by {activity.adminEmail}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-sm text-gray-500">
+                      {format(new Date(activity.timestamp), "MMM dd, HH:mm")}
                     </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {activity.action} on {activity.resource}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      by {activity.adminEmail}
-                    </p>
-                  </div>
-                  <div className="flex-shrink-0 text-sm text-gray-500">
-                    {format(new Date(activity.timestamp), "MMM dd, HH:mm")}
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           ) : (
             <div className="text-center py-12">

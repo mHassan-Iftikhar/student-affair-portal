@@ -55,6 +55,7 @@ interface Resource {
   updatedAt: string;
 }
 
+
 const AcademicResources: React.FC = () => {
   const { user, department } = useAuth();
   const [resources, setResources] = useState<Resource[]>([]);
@@ -63,6 +64,9 @@ const AcademicResources: React.FC = () => {
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -167,7 +171,7 @@ const AcademicResources: React.FC = () => {
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/msword",
-        "image/jpeg",
+        "image/jpeg", 
         "image/png",
         "image/jpg",
         "video/mp4",
@@ -464,6 +468,16 @@ const AcademicResources: React.FC = () => {
     return <LoadingSpinner />;
   }
 
+  // Filter resources based on search term
+  const filteredResources = resources.filter((resource) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      resource.title.toLowerCase().includes(term) ||
+      resource.subject.toLowerCase().includes(term) ||
+      resource.fileName.toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div className="space-y-6 px-2 sm:px-0">
       <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
@@ -488,8 +502,19 @@ const AcademicResources: React.FC = () => {
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Search by title, subject, or file name..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-96 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-        <Table data={resources} columns={columns} />
+        <Table data={filteredResources} columns={columns} />
       </div>
 
       <Modal

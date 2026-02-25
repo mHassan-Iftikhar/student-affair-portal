@@ -33,6 +33,7 @@ import {
 import { logCreate, logUpdate, logDelete } from "../../../utils/auditLogger";
 import { useAuth } from "../../../context/AuthContext";
 
+
 const Items: React.FC = () => {
   const { user, department } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
@@ -51,6 +52,9 @@ const Items: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [reportType, setReportType] = useState<string>("Lost");
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<string>("All");
 
   const { register, handleSubmit, reset, setValue } = useForm<Partial<Item>>();
 
@@ -451,21 +455,52 @@ const Items: React.FC = () => {
     );
   }
 
+  // Filter items by search and report type
+  const filteredItems = items.filter((item) => {
+    const matchesType = filterType === "All" || item.reportType === filterType;
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      item.title.toLowerCase().includes(term) ||
+      item.description.toLowerCase().includes(term) ||
+      (item.category && item.category.toLowerCase().includes(term));
+    return matchesType && matchesSearch;
+  });
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">lostNfound</h1>
-        <button
-          onClick={handleAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Item</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+          {/* Search Bar */}
+          <input
+            type="text"
+            placeholder="Search by title, description, or category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+          {/* Report Type Filter */}
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="w-full sm:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">All</option>
+            <option value="Lost">Lost</option>
+            <option value="Found">Found</option>
+          </select>
+          <button
+            onClick={handleAdd}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Item</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <Table data={items} columns={columns} />
+        <Table data={filteredItems} columns={columns} />
       </div>
 
       <Modal

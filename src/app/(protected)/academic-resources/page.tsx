@@ -1,49 +1,63 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Edit2, Trash2, Download, Upload, FileText } from 'lucide-react';
-import Table from '../../../components/UI/Table';
-import Modal from '../../../components/UI/Modal';
-import LoadingSpinner from '../../../components/UI/LoadingSpinner';
-import { uploadFile } from '../../../utils/firebaseStorage';
-import { 
-  fileToBase64, 
-  base64ToDataURL, 
-  validateFileType, 
+import React, { useState, useEffect } from "react";
+import {
+  BookOpen,
+  Plus,
+  Edit2,
+  Trash2,
+  Download,
+  Upload,
+  FileText,
+} from "lucide-react";
+import Table from "../../../components/UI/Table";
+import Modal from "../../../components/UI/Modal";
+import LoadingSpinner from "../../../components/UI/LoadingSpinner";
+import { where } from "firebase/firestore";
+import { uploadFile } from "../../../utils/firebaseStorage";
+import {
+  fileToBase64,
+  base64ToDataURL,
+  validateFileType,
   validateFileSize,
   formatFileSize,
-  downloadBase64File,
-  Base64Data 
-} from '../../../utils/base64Utils';
-import { 
-  addAcademicResource, 
-  getDocuments, 
+  downloadBase64,
+  Base64Data,
+} from "../../../utils/base64Utils";
+import {
+  addAcademicResource,
+  getDocuments,
+  updateDocument,
   updateDocumentWithBase64,
   deleteDocument,
-  getDocumentWithBase64 
-} from '../../../utils/firestore';
-import { logCreate, logUpdate, logDelete } from '../../../utils/auditLogger';
-import { useAuth } from '../../../context/AuthContext';
-import toast from 'react-hot-toast';
-
+  getDocumentWithBase64,
+} from "../../../utils/firestore";
+import { logCreate, logUpdate, logDelete } from "../../../utils/auditLogger";
+import { useAuth } from "../../../context/AuthContext";
+import toast from "react-hot-toast";
 interface Resource {
   id?: string;
   _id?: string;
   title: string;
-  description: string;
-  category: string;
-  fileUrl?: string;
+  semester: string;
+  subject: string;
+  resourceType: string;
   fileName: string;
   fileType: string;
+  fileSize: string;
+  fileBase64?: string;
+  fileUrl?: string; // Fallback for old data or mock data
+  description?: string; // For mock data compatibility
+  category?: string; // For mock data compatibility
   uploadedBy: string;
+  department?: string;
   createdAt: string;
-  files?: {
-    resource?: Base64Data;
-  };
+  updatedAt: string;
 }
 
+
 const AcademicResources: React.FC = () => {
-  const { user } = useAuth();
+  const { user, department } = useAuth();
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -51,10 +65,14 @@ const AcademicResources: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
+
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: '',
+    title: "",
+    semester: "",
+    subject: "",
+    resourceType: "Notes",
   });
 
   useEffect(() => {
@@ -64,50 +82,84 @@ const AcademicResources: React.FC = () => {
   const fetchResources = async () => {
     setLoading(true);
     try {
+      // Build constraints for department filtering
+      const constraints = [];
+      if (department && department !== "General") {
+        constraints.push(where("department", "==", department));
+      }
+
       // Try to fetch from Firestore
-      const firestoreResources = await getDocuments('academic_resources');
-      
+      const firestoreResources = await getDocuments(
+        "academic_resources",
+        constraints,
+      );
+
       if (firestoreResources && firestoreResources.length > 0) {
-        setResources(firestoreResources.map(r => ({
-          _id: r.id || r._id || '',
-          title: r.title || '',
-          description: r.description || '',
-          category: r.category || '',
-          uploadedBy: r.uploadedBy || '',
-          createdAt: r.createdAt?.toDate?.()?.toISOString() || r.createdAt || new Date().toISOString(),
-          fileName: r.files?.resource?.fileName || r.fileName || '',
-          fileType: r.files?.resource?.mimeType || r.fileType || '',
-        } as Resource)));
+        const mappedResources = firestoreResources.map((r) => {
+          let fileBase64 = r.fileBase64 || "";
+          // If files.resource exists and is an image, use its dataURL
+          if (r.files && r.files.resource && r.files.resource.data && r.files.resource.mimeType && r.files.resource.mimeType.startsWith("image/")) {
+            fileBase64 = `data:${r.files.resource.mimeType};base64,${r.files.resource.data}`;
+          }
+          return {
+            _id: r.id || r._id || "",
+            title: r.title || "",
+            semester: r.semester || "",
+            subject: r.subject || "",
+            resourceType: r.resourceType || "",
+            fileName: r.fileName || "",
+            fileType: r.fileType || "",
+            fileSize: r.fileSize || "",
+            fileBase64,
+            uploadedBy: r.uploadedBy || "",
+            createdAt:
+              r.createdAt?.toDate?.()?.toISOString() ||
+              r.createdAt ||
+              new Date().toISOString(),
+            updatedAt:
+              r.updatedAt?.toDate?.()?.toISOString() ||
+              r.updatedAt ||
+              new Date().toISOString(),
+          } as Resource;
+        });
+        // Sort by createdAt descending (newest first)
+        const sortedResources = [...mappedResources].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setResources(sortedResources);
       } else {
         // Mock data for demo
         setResources([
           {
-            _id: '1',
-            title: 'Computer Science Notes',
-            description: 'Comprehensive notes for CS101',
-            category: 'Computer Science',
-            fileUrl: 'https://example.com/cs-notes.pdf',
-            fileName: 'cs-notes.pdf',
-            fileType: 'application/pdf',
-            uploadedBy: 'Admin',
+            _id: "1",
+            title: "Computer Science Notes",
+            semester: "7th",
+            subject: "Computer Science",
+            resourceType: "Notes",
+            fileName: "cs-notes.pdf",
+            fileType: "application/pdf",
+            fileSize: "1.2 MB",
+            uploadedBy: "Admin",
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           },
           {
-            _id: '2',
-            title: 'Mathematics Study Guide',
-            description: 'Calculus and Linear Algebra resources',
-            category: 'Mathematics',
-            fileUrl: 'https://example.com/math-guide.docx',
-            fileName: 'math-guide.docx',
-            fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            uploadedBy: 'Admin',
+            _id: "2",
+            title: "Mathematics Study Guide",
+            semester: "5th",
+            subject: "Mathematics",
+            resourceType: "Notes",
+            fileName: "math-guide.docx",
+            fileType:
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            fileSize: "500 KB",
+            uploadedBy: "Admin",
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           },
         ]);
       }
     } catch (error) {
-      console.error('Error fetching resources:', error);
-      toast.error('Failed to load resources');
+      console.error("Error fetching resources:", error);
+      toast.error("Failed to load resources");
     } finally {
       setLoading(false);
     }
@@ -117,42 +169,44 @@ const AcademicResources: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       const allowedTypes = [
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/msword',
-        'image/jpeg',
-        'image/png',
-        'image/jpg',
-        'video/mp4',
-        'video/webm',
-        'video/ogg',
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "image/jpeg", 
+        "image/png",
+        "image/jpg",
+        "video/mp4",
+        "video/webm",
+        "video/ogg",
       ];
-      
+
       const typeValidation = validateFileType(file, allowedTypes);
       if (!typeValidation.valid) {
-        toast.error(typeValidation.error || 'Invalid file type');
-        e.target.value = '';
+        toast.error(typeValidation.error || "Invalid file type");
+        e.target.value = "";
         return;
       }
 
       const maxSize = 25; // 25MB for Base64 storage
       const sizeValidation = validateFileSize(file, maxSize);
       if (!sizeValidation.valid) {
-        toast.error(sizeValidation.error || 'File too large');
-        e.target.value = '';
+        toast.error(sizeValidation.error || "File too large");
+        e.target.value = "";
         return;
       }
 
       setSelectedFile(file);
-      toast.success(`File "${file.name}" selected (${formatFileSize(file.size)})`);
+      toast.success(
+        `File "${file.name}" selected (${formatFileSize(file.size)})`,
+      );
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!editingResource && !selectedFile) {
-      toast.error('Please select a file to upload');
+      toast.error("Please select a file to upload");
       return;
     }
 
@@ -163,75 +217,111 @@ const AcademicResources: React.FC = () => {
       // Convert file to Base64 if a new one is selected
       if (selectedFile) {
         base64FileData = await fileToBase64(selectedFile);
-        toast.success('File encoded successfully');
+        toast.success("File encoded successfully");
+      }
+
+      // Integrate AI Content Moderation
+      // For academic resources, we mainly check if the file is an image or if there's enough text content/title
+      if (base64FileData || formData.subject || formData.title) {
+        const moderationToastId = toast.loading("AI is verifying content...");
+        try {
+          const modResponse = await fetch("/api/content-moderation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topic: formData.subject || "academic",
+              content: `${formData.title} - ${formData.semester}`,
+              title: formData.title,
+              imageUrl: base64FileData?.mimeType.startsWith("image/")
+                ? base64ToDataURL(base64FileData)
+                : undefined,
+            }),
+          });
+
+          if (!modResponse.ok) {
+            throw new Error("AI Moderation service unavailable");
+          }
+
+          const modResult = await modResponse.json();
+          toast.dismiss(moderationToastId);
+
+          if (!modResult.isAuthentic) {
+            toast.error(`Content Flagged: ${modResult.reason}`, {
+              duration: 6000,
+            });
+            setUploading(false);
+            return; // Stop submission
+          }
+        } catch (modError) {
+          console.error("Moderation error:", modError);
+          toast.dismiss(moderationToastId);
+          toast.error("AI check failed, proceeding with caution...");
+        }
       }
 
       if (editingResource) {
         // Update existing resource
         const updateData: any = {
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
+          ...formData,
+          updatedAt: new Date().toISOString(),
         };
-
-        const files: any = {};
+        let files: any = undefined;
         if (base64FileData) {
-          files.resource = base64FileData;
           updateData.fileName = base64FileData.fileName;
           updateData.fileType = base64FileData.mimeType;
+          updateData.fileSize = formatFileSize(selectedFile?.size || 0);
+          files = { resource: base64FileData };
         }
-
-        const resourceId = editingResource._id || editingResource.id || '';
-        await updateDocumentWithBase64(
-          'academic_resources',
-          resourceId,
-          updateData,
-          Object.keys(files).length > 0 ? files : undefined
-        );
-
+        const resourceId = editingResource._id || editingResource.id || "";
+        if (files) {
+          await updateDocumentWithBase64("academic_resources", resourceId, updateData, files);
+        } else {
+          await updateDocument("academic_resources", resourceId, updateData);
+        }
         // Log the update
         if (user) {
-          await logUpdate(user, 'academic_resources', resourceId, {
+          await logUpdate(user, "academic_resources", resourceId, {
             title: formData.title,
-            category: formData.category,
-            fileUpdated: !!base64FileData
+            subject: formData.subject,
+            fileUpdated: !!base64FileData,
           });
         }
-
-        toast.success('Resource updated successfully!');
+        toast.success("Resource updated successfully!");
       } else {
         // Create new resource
         if (!base64FileData) {
-          toast.error('File encoding failed');
+          toast.error("File encoding failed");
           return;
         }
-
         const newResourceId = await addAcademicResource({
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          fileData: base64FileData,
-          uploadedBy: user?.email || 'Admin',
+          ...formData,
+          fileName: base64FileData.fileName,
+          fileType: base64FileData.mimeType,
+          fileSize: formatFileSize(selectedFile?.size || 0),
+          fileBase64: base64ToDataURL(base64FileData),
         });
-
         // Log the creation
         if (user) {
-          await logCreate(user, 'academic_resources', newResourceId || 'unknown', {
-            title: formData.title,
-            category: formData.category,
-            fileName: base64FileData.fileName
-          });
+          await logCreate(
+            user,
+            "academic_resources",
+            newResourceId || "unknown",
+            {
+              title: formData.title,
+              subject: formData.subject,
+              fileName: base64FileData.fileName,
+            },
+          );
         }
-
-        toast.success('Resource uploaded successfully to Firestore!');
+        toast.success("Resource uploaded successfully to Firestore!");
       }
 
       setIsModalOpen(false);
       resetForm();
       fetchResources();
     } catch (error) {
-      console.error('Error saving resource:', error);
-      toast.error('Failed to save resource: ' + (error as Error).message);
+      console.error("Error saving resource:", error);
+      toast.error("Failed to save resource: " + (error as Error).message);
     } finally {
       setUploading(false);
     }
@@ -241,43 +331,45 @@ const AcademicResources: React.FC = () => {
     setEditingResource(resource);
     setFormData({
       title: resource.title,
-      description: resource.description,
-      category: resource.category,
+      semester: resource.semester,
+      subject: resource.subject,
+      resourceType: resource.resourceType,
     });
     setSelectedFile(null);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this resource?')) {
+    if (window.confirm("Are you sure you want to delete this resource?")) {
       try {
         // Find the resource for logging
-        const resourceToDelete = resources.find(r => (r._id || r.id) === id);
-        
-        await deleteDocument('academic_resources', id);
-        
+        const resourceToDelete = resources.find((r) => (r._id || r.id) === id);
+
+        await deleteDocument("academic_resources", id);
+
         // Log the deletion
         if (user) {
-          await logDelete(user, 'academic_resources', id, {
+          await logDelete(user, "academic_resources", id, {
             title: resourceToDelete?.title,
-            category: resourceToDelete?.category
+            subject: resourceToDelete?.subject,
           });
         }
-        
-        toast.success('Resource deleted successfully');
+
+        toast.success("Resource deleted successfully");
         fetchResources();
       } catch (error) {
-        console.error('Error deleting resource:', error);
-        toast.error('Failed to delete resource');
+        console.error("Error deleting resource:", error);
+        toast.error("Failed to delete resource");
       }
     }
   };
 
   const resetForm = () => {
     setFormData({
-      title: '',
-      description: '',
-      category: '',
+      title: "",
+      semester: "",
+      subject: "",
+      resourceType: "Notes",
     });
     setSelectedFile(null);
     setEditingResource(null);
@@ -285,35 +377,52 @@ const AcademicResources: React.FC = () => {
 
   const handleDownload = async (resource: Resource) => {
     try {
-      // If resource has Base64 data in Firestore
+      // If resource has Base64 data in Firestore (new format)
       if (resource.id || resource._id) {
-        const { files } = await getDocumentWithBase64('academic_resources', resource.id || resource._id || '');
+        const { files } = await getDocumentWithBase64(
+          "academic_resources",
+          resource.id || resource._id || "",
+        );
         if (files?.resource) {
-          downloadBase64File(files.resource);
-          toast.success('Download started');
+          downloadBase64(
+            files.resource.data,
+            files.resource.fileName,
+            files.resource.mimeType
+          );
+          toast.success("Download started");
           return;
         }
       }
-      
+      // Fallback to fileBase64 (old format)
+      if (resource.fileBase64) {
+        downloadBase64(
+          resource.fileBase64,
+          resource.fileName,
+          resource.fileType
+        );
+        toast.success("Download started");
+        return;
+      }
       // Fallback to URL if available
       if (resource.fileUrl) {
-        window.open(resource.fileUrl, '_blank');
+        window.open(resource.fileUrl, "_blank");
       } else {
-        toast.error('File not available for download');
+        toast.error("File not available for download");
       }
     } catch (error) {
-      console.error('Error downloading file:', error);
-      toast.error('Failed to download file');
+      console.error("Error downloading file:", error);
+      toast.error("Failed to download file");
     }
   };
 
   const columns = [
-    { key: 'title', header: 'Title' },
-    { key: 'category', header: 'Subject' },
-    { key: 'description', header: 'Description' },
+    { key: "title", header: "Title" },
+    { key: "subject", header: "Subject" },
+    { key: "semester", header: "Semester" },
+    { key: "resourceType", header: "Type" },
     {
-      key: 'fileName',
-      header: 'File',
+      key: "fileName",
+      header: "File",
       render: (resource: Resource) => (
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-gray-500" />
@@ -322,14 +431,14 @@ const AcademicResources: React.FC = () => {
       ),
     },
     {
-      key: 'createdAt',
-      header: 'Uploaded',
+      key: "createdAt",
+      header: "Uploaded",
       render: (resource: Resource) =>
         new Date(resource.createdAt).toLocaleDateString(),
     },
     {
-      key: 'actions',
-      header: 'Actions',
+      key: "actions",
+      header: "Actions",
       render: (resource: Resource) => (
         <div className="flex space-x-2">
           <button
@@ -347,7 +456,7 @@ const AcademicResources: React.FC = () => {
             <Edit2 className="h-4 w-4" />
           </button>
           <button
-            onClick={() => handleDelete(resource._id || resource.id || '')}
+            onClick={() => handleDelete(resource._id || resource.id || "")}
             className="text-red-600 hover:text-red-900"
             title="Delete"
           >
@@ -362,15 +471,25 @@ const AcademicResources: React.FC = () => {
     return <LoadingSpinner />;
   }
 
+  // Filter resources based on search term
+  const filteredResources = resources.filter((resource) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      resource.title.toLowerCase().includes(term) ||
+      resource.subject.toLowerCase().includes(term) ||
+      resource.fileName.toLowerCase().includes(term)
+    );
+  });
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 px-2 sm:px-0">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <BookOpen className="h-8 w-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <BookOpen className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600" />
             Academic Resources
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">
             Manage educational materials and resources
           </p>
         </div>
@@ -379,14 +498,27 @@ const AcademicResources: React.FC = () => {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 w-full sm:w-auto justify-center"
         >
           <Plus className="h-5 w-5" />
-          Add Resource
+          <span>Add Resource</span>
         </button>
       </div>
 
-      <Table data={resources} columns={columns} />
+      {/* Search Bar */}
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Search by title, subject, or file name..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-96 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <Table data={filteredResources} columns={columns} />
+      </div>
 
       <Modal
         isOpen={isModalOpen}
@@ -394,7 +526,7 @@ const AcademicResources: React.FC = () => {
           setIsModalOpen(false);
           resetForm();
         }}
-        title={editingResource ? 'Edit Resource' : 'Add New Resource'}
+        title={editingResource ? "Edit Resource" : "Add New Resource"}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -412,32 +544,52 @@ const AcademicResources: React.FC = () => {
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Semester
+              </label>
+              <input
+                type="text"
+                value={formData.semester}
+                onChange={(e) =>
+                  setFormData({ ...formData, semester: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. 7th"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Resource Type
+              </label>
+              <select
+                value={formData.resourceType}
+                onChange={(e) =>
+                  setFormData({ ...formData, resourceType: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="Past Paper">Past Paper</option>
+                <option value="Assignment">Assignment</option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Subject
             </label>
             <input
               type="text"
-              value={formData.category}
+              value={formData.subject}
               onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value })
+                setFormData({ ...formData, subject: e.target.value })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              rows={3}
               required
             />
           </div>
@@ -455,12 +607,16 @@ const AcademicResources: React.FC = () => {
                 required={!editingResource}
               />
               <p className="mt-1 text-xs text-gray-500">
-                Max file size: 25MB. Supported: PDF, DOCX, Images (JPG, PNG), Videos (MP4, WEBM, OGG)
+                Max file size: 25MB. Supported: PDF, DOCX, Images (JPG, PNG),
+                Videos (MP4, WEBM, OGG)
               </p>
               {selectedFile && (
                 <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
                   <Upload className="h-4 w-4" />
-                  <span>Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})</span>
+                  <span>
+                    Selected: {selectedFile.name} (
+                    {formatFileSize(selectedFile.size)})
+                  </span>
                 </div>
               )}
               {editingResource && !selectedFile && (
@@ -472,21 +628,21 @@ const AcademicResources: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex flex-col sm:flex-row justify-end sm:space-x-3 pt-4 gap-2 sm:gap-0">
             <button
               type="button"
               onClick={() => {
                 setIsModalOpen(false);
                 resetForm();
               }}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 w-full sm:w-auto"
               disabled={uploading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 w-full sm:w-auto justify-center"
               disabled={uploading}
             >
               {uploading ? (
@@ -495,9 +651,7 @@ const AcademicResources: React.FC = () => {
                   Uploading...
                 </>
               ) : (
-                <>
-                  {editingResource ? 'Update' : 'Upload'} Resource
-                </>
+                <>{editingResource ? "Update" : "Upload"} Resource</>
               )}
             </button>
           </div>

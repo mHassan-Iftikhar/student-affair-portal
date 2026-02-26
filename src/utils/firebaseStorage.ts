@@ -218,7 +218,7 @@ export const uploadFileAsBase64 = async (
   }
 
   // Convert Base64 back to Blob for upload
-  const blob = base64ToBlob(base64Data);
+  const blob = base64ToBlob(base64Data.data, base64Data.mimeType);
   return await uploadFile(path, blob, onProgress);
 };
 

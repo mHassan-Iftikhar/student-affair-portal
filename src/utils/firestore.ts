@@ -1,3 +1,38 @@
+// ...existing code...
+
+// updateEvent should be defined only once, after all imports
+/**
+ * Update an event document in Firestore.
+ * @param eventId The ID of the event to update.
+ * @param data The event data to update.
+ * @param imageData Optional image data (Base64Data).
+ */
+export const updateEvent = async (
+  eventId: string,
+  data: {
+    title: string;
+    content: string;
+    date: any;
+    time: any;
+    location: any;
+    category: any;
+    department: string;
+    isPublished: boolean;
+  },
+  imageData?: Base64Data,
+): Promise<void> => {
+  let imageUrl: string | undefined = undefined;
+  let imageMimeType: string | undefined = undefined;
+  if (imageData && imageData.data && imageData.mimeType) {
+    imageUrl = imageData.data; // Store only raw base64, no prefix
+    imageMimeType = imageData.mimeType;
+  }
+  await updateDocument("events", eventId, {
+    ...data,
+    ...(imageUrl ? { imageUrl } : {}),
+    ...(imageMimeType ? { imageMimeType } : {}),
+  });
+};
 import {
   collection,
   doc,
@@ -16,17 +51,20 @@ import {
   serverTimestamp,
   writeBatch,
   onSnapshot,
-  Unsubscribe
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { Base64Data } from './base64Utils';
+  Unsubscribe,
+} from "firebase/firestore";
+import { db } from "../config/firebase";
+import { Base64Data } from "./base64Utils";
 
 /**
  * Get a single document by ID
  */
-export const getDocument = async (collectionName: string, documentId: string): Promise<DocumentData | null> => {
+export const getDocument = async (
+  collectionName: string,
+  documentId: string,
+): Promise<DocumentData | null> => {
   if (!db) {
-    console.warn('Firestore is not initialized. Returning null.');
+    console.warn("Firestore is not initialized. Returning null.");
     return null;
   }
 
@@ -36,7 +74,7 @@ export const getDocument = async (collectionName: string, documentId: string): P
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() };
   }
-  
+
   return null;
 };
 
@@ -45,10 +83,10 @@ export const getDocument = async (collectionName: string, documentId: string): P
  */
 export const getDocuments = async (
   collectionName: string,
-  constraints?: QueryConstraint[]
+  constraints?: QueryConstraint[],
 ): Promise<DocumentData[]> => {
   if (!db) {
-    console.warn('Firestore is not initialized. Returning empty array.');
+    console.warn("Firestore is not initialized. Returning empty array.");
     return [];
   }
 
@@ -56,24 +94,30 @@ export const getDocuments = async (
   const q = constraints ? query(collectionRef, ...constraints) : collectionRef;
   const querySnapshot = await getDocs(q);
 
-  return querySnapshot.docs.map(doc => ({
+  return querySnapshot.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data()
+    ...doc.data(),
   }));
 };
 
 /**
  * Add a new document to a collection
  */
-export const addDocument = async (collectionName: string, data: DocumentData): Promise<string> => {
+export const addDocument = async (
+  collectionName: string,
+  data: DocumentData,
+): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
+    throw new Error(
+      "Firestore is not initialized. Please check your Firebase configuration.",
+    );
   }
 
+  const now = new Date().toISOString();
   const docRef = await addDoc(collection(db, collectionName), {
     ...data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    createdAt: data.createdAt || now,
+    updatedAt: now,
   });
 
   return docRef.id;
@@ -85,25 +129,32 @@ export const addDocument = async (collectionName: string, data: DocumentData): P
 export const updateDocument = async (
   collectionName: string,
   documentId: string,
-  data: Partial<DocumentData>
+  data: Partial<DocumentData>,
 ): Promise<void> => {
   if (!db) {
-    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
+    throw new Error(
+      "Firestore is not initialized. Please check your Firebase configuration.",
+    );
   }
 
   const docRef = doc(db, collectionName, documentId);
   await updateDoc(docRef, {
     ...data,
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
   });
 };
 
 /**
  * Delete a document
  */
-export const deleteDocument = async (collectionName: string, documentId: string): Promise<void> => {
+export const deleteDocument = async (
+  collectionName: string,
+  documentId: string,
+): Promise<void> => {
   if (!db) {
-    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
+    throw new Error(
+      "Firestore is not initialized. Please check your Firebase configuration.",
+    );
   }
 
   const docRef = doc(db, collectionName, documentId);
@@ -113,24 +164,28 @@ export const deleteDocument = async (collectionName: string, documentId: string)
 /**
  * Batch write operations
  */
-export const batchWrite = async (operations: Array<{
-  type: 'add' | 'update' | 'delete';
-  collectionName: string;
-  documentId?: string;
-  data?: DocumentData;
-}>): Promise<void> => {
+export const batchWrite = async (
+  operations: Array<{
+    type: "add" | "update" | "delete";
+    collectionName: string;
+    documentId?: string;
+    data?: DocumentData;
+  }>,
+): Promise<void> => {
   if (!db) {
-    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
+    throw new Error(
+      "Firestore is not initialized. Please check your Firebase configuration.",
+    );
   }
 
   const batch = writeBatch(db);
   const firestore = db;
 
-  operations.forEach(op => {
-    if (op.type === 'delete' && op.documentId) {
+  operations.forEach((op) => {
+    if (op.type === "delete" && op.documentId) {
       const docRef = doc(firestore, op.collectionName, op.documentId);
       batch.delete(docRef);
-    } else if (op.type === 'update' && op.documentId && op.data) {
+    } else if (op.type === "update" && op.documentId && op.data) {
       const docRef = doc(firestore, op.collectionName, op.documentId);
       batch.update(docRef, { ...op.data, updatedAt: serverTimestamp() });
     }
@@ -145,16 +200,18 @@ export const batchWrite = async (operations: Array<{
 export const subscribeToDocument = (
   collectionName: string,
   documentId: string,
-  callback: (data: DocumentData | null) => void
+  callback: (data: DocumentData | null) => void,
 ): Unsubscribe => {
   if (!db) {
-    console.warn('Firestore is not initialized. Returning no-op unsubscribe function.');
+    console.warn(
+      "Firestore is not initialized. Returning no-op unsubscribe function.",
+    );
     callback(null);
     return () => {}; // Return empty unsubscribe function
   }
 
   const docRef = doc(db, collectionName, documentId);
-  
+
   return onSnapshot(docRef, (docSnap) => {
     if (docSnap.exists()) {
       callback({ id: docSnap.id, ...docSnap.data() });
@@ -170,10 +227,12 @@ export const subscribeToDocument = (
 export const subscribeToCollection = (
   collectionName: string,
   callback: (data: DocumentData[]) => void,
-  constraints?: QueryConstraint[]
+  constraints?: QueryConstraint[],
 ): Unsubscribe => {
   if (!db) {
-    console.warn('Firestore is not initialized. Returning no-op unsubscribe function.');
+    console.warn(
+      "Firestore is not initialized. Returning no-op unsubscribe function.",
+    );
     // Return a no-op function that can be called safely
     callback([]);
     return () => {}; // Return empty unsubscribe function
@@ -183,9 +242,9 @@ export const subscribeToCollection = (
   const q = constraints ? query(collectionRef, ...constraints) : collectionRef;
 
   return onSnapshot(q, (querySnapshot) => {
-    const documents = querySnapshot.docs.map(doc => ({
+    const documents = querySnapshot.docs.map((doc) => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
     }));
     callback(documents);
   });
@@ -195,8 +254,10 @@ export const subscribeToCollection = (
  * Query helper functions
  */
 export const queryHelpers = {
-  where: (field: string, operator: any, value: any) => where(field, operator, value),
-  orderBy: (field: string, direction: 'asc' | 'desc' = 'asc') => orderBy(field, direction),
+  where: (field: string, operator: any, value: any) =>
+    where(field, operator, value),
+  orderBy: (field: string, direction: "asc" | "desc" = "asc") =>
+    orderBy(field, direction),
   limit: (count: number) => limit(count),
 };
 
@@ -219,10 +280,12 @@ export const getServerTimestamp = () => serverTimestamp();
 export const addDocumentWithBase64 = async (
   collectionName: string,
   data: DocumentData,
-  base64Files?: { [key: string]: Base64Data }
+  base64Files?: { [key: string]: Base64Data },
 ): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
+    throw new Error(
+      "Firestore is not initialized. Please check your Firebase configuration.",
+    );
   }
 
   const documentData = {
@@ -243,10 +306,10 @@ export const updateDocumentWithBase64 = async (
   collectionName: string,
   documentId: string,
   data: Partial<DocumentData>,
-  base64Files?: { [key: string]: Base64Data }
+  base64Files?: { [key: string]: Base64Data },
 ): Promise<void> => {
   if (!db) {
-    throw new Error('Firestore is not initialized');
+    throw new Error("Firestore is not initialized");
   }
 
   const docRef = doc(db, collectionName, documentId);
@@ -267,8 +330,11 @@ export const updateDocumentWithBase64 = async (
  */
 export const getDocumentWithBase64 = async (
   collectionName: string,
-  documentId: string
-): Promise<{ document: DocumentData | null; files?: { [key: string]: Base64Data } }> => {
+  documentId: string,
+): Promise<{
+  document: DocumentData | null;
+  files?: { [key: string]: Base64Data };
+}> => {
   const document = await getDocument(collectionName, documentId);
 
   if (!document) {
@@ -289,97 +355,91 @@ export const getDocumentWithBase64 = async (
 // Academic Resources
 export const addAcademicResource = async (data: {
   title: string;
-  description: string;
-  category: string;
-  fileData: Base64Data;
-  uploadedBy: string;
+  semester: string;
+  subject: string;
+  resourceType: string;
+  fileName: string;
+  fileType: string;
+  fileSize: string;
+  fileBase64: string;
+  updatedAt?: string;
+  createdAt?: string;
 }): Promise<string> => {
-  return await addDocumentWithBase64('academic_resources', {
-    title: data.title,
-    description: data.description,
-    category: data.category,
-    uploadedBy: data.uploadedBy,
-  }, {
-    resource: data.fileData,
+  return await addDocument("academic_resources", {
+    ...data,
   });
 };
 
 // Lost and Found Items
 export const addLostAndFoundItem = async (data: {
   title: string;
+  reportType: string;
   description: string;
-  category: string;
-  imageData?: Base64Data;
-  [key: string]: any;
+  date: string;
+  time: string;
+  imageUrl: string;
+  isClaimed: boolean;
+  createdBy: string;
+  claimedBy?: string;
+  claimedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.imageData) {
-    files.image = data.imageData;
-  }
+  return await addDocument("lostNfound", {
+    ...data,
+  });
+}
 
-  const { imageData: _imageData, ...restData } = data;
-  return await addDocumentWithBase64('lostNfound', restData, files);
+// Events
+export const addEvent = async (
+  data: {
+    title: string;
+    content: string;
+    date: any;
+    time: any;
+    location: any;
+    category: any;
+    department: string;
+    isPublished: boolean;
+  },
+  imageData?: Base64Data,
+): Promise<string> => {
+  let image: string | undefined = undefined;
+  if (imageData && imageData.data && imageData.mimeType) {
+    image = imageData.data; // Store only raw base64, no prefix
+  }
+  return await addDocument("events", {
+    ...data,
+    ...(image ? { image } : {}),
+  });
 };
 
-// Events (Stories)
-export const addEvent = async (data: {
-  title: string;
-  content: string;
-  imageData?: Base64Data;
-  videoData?: Base64Data;
-  [key: string]: any;
-}): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.imageData) {
-    files.image = data.imageData;
-  }
-  if (data.videoData) {
-    files.video = data.videoData;
-  }
-
-  const { imageData: _imageData, videoData: _videoData, ...restData } = data;
-  return await addDocumentWithBase64('events', restData, files);
-};
-
-// Groups
-export const addGroup = async (data: {
-  name: string;
-  description: string;
-  imageData?: Base64Data;
-  [key: string]: any;
-}): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.imageData) {
-    files.image = data.imageData;
-  }
-
-  const { imageData: _imageData, ...restData } = data;
-  return await addDocumentWithBase64('groups', restData, files);
-};
-
-// Users with Profile Picture
+// Users
 export const addUserWithProfilePicture = async (data: {
   uid: string;
+  name: string;
   email: string;
-  displayName: string;
-  photoData?: Base64Data;
-  [key: string]: any;
+  degree: string;
+  semester: string;
+  gender: string;
+  profileImageBase64: string;
+  fcmToken: string;
+  isProfileCompleted: boolean;
+  department?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }): Promise<string> => {
-  const files: { [key: string]: Base64Data } = {};
-  if (data.photoData) {
-    files.profilePicture = data.photoData;
-  }
-
-  const { photoData: _photoData, ...restData } = data;
-  return await addDocumentWithBase64('users', restData, files);
+  return await addDocument("users", {
+    ...data,
+  });
 };
 
 export const updateUserProfilePicture = async (
   userId: string,
-  photoData: Base64Data
+  profileImageBase64: string,
 ): Promise<void> => {
-  return await updateDocumentWithBase64('users', userId, {}, {
-    profilePicture: photoData,
+  return await updateDocument("users", userId, {
+    profileImageBase64,
   });
 };
 
@@ -392,13 +452,21 @@ export const updateUserProfilePicture = async (
 export interface AuditLogEntry {
   adminId: string;
   adminEmail: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'VIEW' | 'EXPORT';
+  action:
+    | "CREATE"
+    | "UPDATE"
+    | "DELETE"
+    | "LOGIN"
+    | "LOGOUT"
+    | "VIEW"
+    | "EXPORT";
   resource: string;
   resourceId?: string;
   details?: Record<string, any>;
   ipAddress?: string;
   userAgent?: string;
   screenshotData?: Base64Data;
+  department?: string;
   timestamp?: any;
 }
 
@@ -407,7 +475,9 @@ export interface AuditLogEntry {
  */
 export const addAuditLog = async (data: AuditLogEntry): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
+    throw new Error(
+      "Firestore is not initialized. Please check your Firebase configuration.",
+    );
   }
 
   const files: { [key: string]: Base64Data } = {};
@@ -417,10 +487,14 @@ export const addAuditLog = async (data: AuditLogEntry): Promise<string> => {
 
   const { screenshotData: _screenshotData, ...logData } = data;
 
-  return await addDocumentWithBase64('audit_logs', {
-    ...logData,
-    timestamp: serverTimestamp(),
-  }, Object.keys(files).length > 0 ? files : undefined);
+  return await addDocumentWithBase64(
+    "audit_logs",
+    {
+      ...logData,
+      timestamp: serverTimestamp(),
+    },
+    Object.keys(files).length > 0 ? files : undefined,
+  );
 };
 
 /**
@@ -428,6 +502,7 @@ export const addAuditLog = async (data: AuditLogEntry): Promise<string> => {
  */
 export const getAuditLogs = async (filters?: {
   adminEmail?: string;
+  department?: string;
   action?: string;
   resource?: string;
   startDate?: Date;
@@ -435,26 +510,29 @@ export const getAuditLogs = async (filters?: {
   limit?: number;
 }): Promise<DocumentData[]> => {
   if (!db) {
-    console.warn('Firestore is not initialized. Returning empty array.');
+    console.warn("Firestore is not initialized. Returning empty array.");
     return [];
   }
 
-  const constraints: QueryConstraint[] = [orderBy('timestamp', 'desc')];
+  const constraints: QueryConstraint[] = [orderBy("timestamp", "desc")];
 
   if (filters?.adminEmail) {
-    constraints.push(where('adminEmail', '==', filters.adminEmail));
+    constraints.push(where("adminEmail", "==", filters.adminEmail));
+  }
+  if (filters?.department) {
+    constraints.push(where("department", "==", filters.department));
   }
   if (filters?.action) {
-    constraints.push(where('action', '==', filters.action));
+    constraints.push(where("action", "==", filters.action));
   }
   if (filters?.resource) {
-    constraints.push(where('resource', '==', filters.resource));
+    constraints.push(where("resource", "==", filters.resource));
   }
   if (filters?.limit) {
     constraints.push(limit(filters.limit));
   }
 
-  return await getDocuments('audit_logs', constraints);
+  return await getDocuments("audit_logs", constraints);
 };
 
 /**
@@ -462,13 +540,12 @@ export const getAuditLogs = async (filters?: {
  */
 export const subscribeToAuditLogs = (
   callback: (logs: DocumentData[]) => void,
-  limitCount: number = 50
+  limitCount: number = 50,
 ): Unsubscribe => {
-  return subscribeToCollection(
-    'audit_logs',
-    callback,
-    [orderBy('timestamp', 'desc'), limit(limitCount)]
-  );
+  return subscribeToCollection("audit_logs", callback, [
+    orderBy("timestamp", "desc"),
+    limit(limitCount),
+  ]);
 };
 
 /**
@@ -476,10 +553,10 @@ export const subscribeToAuditLogs = (
  */
 export const logUserAction = async (
   user: { uid: string; email: string },
-  action: AuditLogEntry['action'],
+  action: AuditLogEntry["action"],
   resource: string,
   resourceId?: string,
-  details?: Record<string, any>
+  details?: Record<string, any>,
 ): Promise<string> => {
   return await addAuditLog({
     adminId: user.uid,
@@ -488,7 +565,8 @@ export const logUserAction = async (
     resource,
     resourceId,
     details,
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+    userAgent:
+      typeof navigator !== "undefined" ? navigator.userAgent : undefined,
   });
 };
 
@@ -503,7 +581,8 @@ export interface NotificationEntry {
   message: string;
   targetUsers: string[]; // empty array means all users
   imageData?: Base64Data;
-  priority?: 'low' | 'normal' | 'high';
+  imageText?: string; // Explicit text form storage
+  priority?: "low" | "normal" | "high";
   expiresAt?: Date;
   sentBy: string;
   sentByEmail: string;
@@ -512,9 +591,13 @@ export interface NotificationEntry {
 /**
  * Add a notification with optional image attachment
  */
-export const addNotification = async (data: NotificationEntry): Promise<string> => {
+export const addNotification = async (
+  data: NotificationEntry,
+): Promise<string> => {
   if (!db) {
-    throw new Error('Firestore is not initialized. Please check your Firebase configuration.');
+    throw new Error(
+      "Firestore is not initialized. Please check your Firebase configuration.",
+    );
   }
 
   const files: { [key: string]: Base64Data } = {};
@@ -524,13 +607,23 @@ export const addNotification = async (data: NotificationEntry): Promise<string> 
 
   const { imageData: _imageData, expiresAt, ...notificationData } = data;
 
-  return await addDocumentWithBase64('notifications', {
-    ...notificationData,
-    sentAt: serverTimestamp(),
-    expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
-    deliveryCount: 0,
-    isRead: false,
-  }, Object.keys(files).length > 0 ? files : undefined);
+  // If imageData is provided, ensure imageText is also set (if not already)
+  let finalNotificationData = { ...notificationData };
+  if (data.imageData && !data.imageText) {
+    finalNotificationData.imageText = `data:${data.imageData.mimeType};base64,${data.imageData.data}`;
+  }
+
+  return await addDocumentWithBase64(
+    "notifications",
+    {
+      ...finalNotificationData,
+      sentAt: serverTimestamp(),
+      expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
+      deliveryCount: 0,
+      isRead: false,
+    },
+    Object.keys(files).length > 0 ? files : undefined,
+  );
 };
 
 /**
@@ -542,24 +635,26 @@ export const getNotifications = async (filters?: {
   limit?: number;
 }): Promise<DocumentData[]> => {
   if (!db) {
-    console.warn('Firestore is not initialized. Returning empty array.');
+    console.warn("Firestore is not initialized. Returning empty array.");
     return [];
   }
 
-  const constraints: QueryConstraint[] = [orderBy('sentAt', 'desc')];
+  const constraints: QueryConstraint[] = [orderBy("sentAt", "desc")];
 
   if (filters?.limit) {
     constraints.push(limit(filters.limit));
   }
 
-  return await getDocuments('notifications', constraints);
+  return await getDocuments("notifications", constraints);
 };
 
 /**
  * Mark notification as read
  */
-export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
-  return await updateDocument('notifications', notificationId, {
+export const markNotificationAsRead = async (
+  notificationId: string,
+): Promise<void> => {
+  return await updateDocument("notifications", notificationId, {
     isRead: true,
     readAt: serverTimestamp(),
   });
@@ -570,9 +665,9 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
  */
 export const updateNotificationDeliveryCount = async (
   notificationId: string,
-  count: number
+  count: number,
 ): Promise<void> => {
-  return await updateDocument('notifications', notificationId, {
+  return await updateDocument("notifications", notificationId, {
     deliveryCount: count,
   });
 };
@@ -582,11 +677,10 @@ export const updateNotificationDeliveryCount = async (
  */
 export const subscribeToNotifications = (
   callback: (notifications: DocumentData[]) => void,
-  limitCount: number = 50
+  limitCount: number = 50,
 ): Unsubscribe => {
-  return subscribeToCollection(
-    'notifications',
-    callback,
-    [orderBy('sentAt', 'desc'), limit(limitCount)]
-  );
+  return subscribeToCollection("notifications", callback, [
+    orderBy("sentAt", "desc"),
+    limit(limitCount),
+  ]);
 };

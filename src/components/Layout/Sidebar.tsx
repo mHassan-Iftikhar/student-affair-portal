@@ -1,48 +1,67 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Package, 
-  Bell, 
-  Users, 
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Package,
+  Bell,
+  Users,
   Calendar,
   BookOpen,
   Activity,
   LogOut,
-  Shield
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+  Shield,
+  X,
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { logout, user } = useAuth();
   const pathname = usePathname();
 
   const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/lostnfound', icon: Package, label: 'LostNFound' },
-    { to: '/events', icon: Calendar, label: 'Events' },
-    { to: '/academic-resources', icon: BookOpen, label: 'Academic Resources' },
-    { to: '/users', icon: Users, label: 'Users' },
-    { to: '/notifications', icon: Bell, label: 'Notification' },
-    { to: '/logs', icon: Activity, label: 'Audit Log' },
-    { to: '/content-moderation-test', icon: Shield, label: 'Content AI Test' },
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/lostnfound", icon: Package, label: "LostNFound" },
+    { to: "/events", icon: Calendar, label: "Events" },
+    { to: "/academic-resources", icon: BookOpen, label: "Academic Resources" },
+    { to: "/users", icon: Users, label: "Users" },
+    { to: "/notifications", icon: Bell, label: "Notification" },
+    { to: "/log", icon: Activity, label: "Audit Log" },
   ];
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white w-64 min-h-screen flex flex-col shadow-2xl">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col transform bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white shadow-2xl transition-transform duration-200 lg:static lg:h-full lg:translate-x-0 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* Header */}
       <div className="p-6 border-b border-gray-700">
-        <div className="flex items-center space-x-3">
-          <div className="bg-blue-600 rounded-lg p-2">
-            <Shield className="h-6 w-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-600 rounded-lg p-2">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Admin Portal</h1>
+              <p className="text-xs text-gray-400">Management System</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Admin Portal</h1>
-            <p className="text-xs text-gray-400">Management System</p>
-          </div>
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-300 hover:bg-gray-800 hover:text-white lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       </div>
 
@@ -55,14 +74,14 @@ const Sidebar: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
-                {user.displayName || 'Admin'}
+                {user.displayName || "Admin"}
               </p>
               <p className="text-xs text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
         </div>
       )}
-      
+
       {/* Navigation - scrollable */}
       <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
         {navItems.map((item) => {
@@ -71,10 +90,11 @@ const Sidebar: React.FC = () => {
             <Link
               key={item.to}
               href={item.to}
+              onClick={onClose}
               className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                 isActive
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
+                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
               }`}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -94,7 +114,7 @@ const Sidebar: React.FC = () => {
           <span className="font-medium">Logout</span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 };
 

@@ -1,46 +1,62 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import api from '../utils/api';
-import toast from 'react-hot-toast';
-import { AuthContextType } from '../types';
-import { logLogin, logLogout } from '../utils/auditLogger';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { signInWithEmailAndPassword, signOut, User } from "firebase/auth";
+import { auth } from "../config/firebase";
+import api from "../utils/api";
+import toast from "react-hot-toast";
+import { AuthContextType } from "../types";
+import { logLogin, logLogout } from "../utils/auditLogger";
+
+const getDepartmentFromEmail = (email: string | null): string | null => {
+  if (!email) return null;
+  const lowerEmail = email.toLowerCase();
+  if (lowerEmail.includes("@cs.panel.com")) return "Computer Science";
+  if (lowerEmail.includes("@ai.panel.com")) return "AI";
+  if (lowerEmail.includes("@se.panel.com")) return "Software Engineering";
+  if (lowerEmail.includes("@it.panel.com")) return "Information Technology";
+  return "General";
+};
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [department, setDepartment] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Development mode bypass
-  const isDevelopment = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const isDevelopment =
+    process.env.NODE_ENV === "development" &&
+    !process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
   useEffect(() => {
     // Development mode - auto login
     if (isDevelopment) {
       const mockUser = {
-        uid: 'dev-admin-123',
-        email: 'admin@dev.local',
-        displayName: 'Dev Admin',
-        photoURL: null
+        uid: "dev-admin-123",
+        email: "admin@dev.local",
+        displayName: "Dev Admin",
+        photoURL: null,
       } as User;
-      
+
       setUser(mockUser);
-      setToken('dev-token-123');
-      localStorage.setItem('adminToken', 'dev-token-123');
+      setToken("dev-token-123");
+      setDepartment(getDepartmentFromEmail(mockUser.email));
+      localStorage.setItem("adminToken", "dev-token-123");
       // Set cookie for middleware
-      document.cookie = 'adminToken=dev-token-123; path=/; max-age=86400';
+      document.cookie = "adminToken=dev-token-123; path=/; max-age=86400";
       setLoading(false);
       return;
     }
@@ -56,38 +72,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const idToken = await user.getIdToken();
           setUser(user);
           setToken(idToken);
-          localStorage.setItem('adminToken', idToken);
-          
+          setDepartment(getDepartmentFromEmail(user.email));
+          localStorage.setItem("adminToken", idToken);
+
           // Optional: Try to verify admin status with backend (non-blocking)
           try {
-            const response = await api.post('/auth/verify-admin', {
-              idToken,
-            }, {
-              headers: {
-                'X-Silent-Error': 'true'
-              }
-            });
-            
+            const response = await api.post(
+              "/auth/verify-admin",
+              {
+                idToken,
+              },
+              {
+                headers: {
+                  "X-Silent-Error": "true",
+                },
+              },
+            );
+
             if (response.data.token) {
               setToken(response.data.token);
-              localStorage.setItem('adminToken', response.data.token);
+              localStorage.setItem("adminToken", response.data.token);
             }
           } catch {
             // Backend verification failed, but continue with Firebase auth (silently)
             // This is expected when backend is not running
           }
         } catch (error) {
-          console.error('Failed to get Firebase token:', error);
+          console.error("Failed to get Firebase token:", error);
           setUser(null);
           setToken(null);
-          localStorage.removeItem('adminToken');
-          document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          setDepartment(null);
+          localStorage.removeItem("adminToken");
+          document.cookie =
+            "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         }
       } else {
         setUser(null);
         setToken(null);
-        localStorage.removeItem('adminToken');
-        document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        setDepartment(null);
+        localStorage.removeItem("adminToken");
+        document.cookie =
+          "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
       setLoading(false);
     });
@@ -99,77 +124,103 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Development mode bypass
       if (isDevelopment) {
-        if (email === 'admin@dev.local' && password === 'admin123') {
-          toast.success('Development login successful');
+        if (email === "admin@dev.local" && password === "admin123") {
+          setUser({
+            uid: "dev-admin-123",
+            email: "admin@dev.local",
+            displayName: "Dev Admin",
+            photoURL: null,
+          } as User);
+          setToken("dev-token-123");
+          setDepartment(getDepartmentFromEmail(email));
+          localStorage.setItem("adminToken", "dev-token-123");
+          document.cookie = "adminToken=dev-token-123; path=/; max-age=86400";
+          toast.success("Development login successful");
           return;
         } else {
-          toast.error('Use admin@dev.local / admin123 for development');
-          throw new Error('Invalid development credentials');
+          toast.error("Use admin@dev.local / admin123 for development");
+          throw new Error("Invalid development credentials");
         }
       }
 
       // Sign in with Firebase
       if (!auth) {
-        throw new Error('Firebase authentication is not initialized');
+        throw new Error("Firebase authentication is not initialized");
       }
-      
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
+
       if (userCredential.user) {
+        const idToken = await userCredential.user.getIdToken();
+        setUser(userCredential.user);
+        setToken(idToken);
+        setDepartment(
+          getDepartmentFromEmail(userCredential.user.email || email),
+        );
+        localStorage.setItem("adminToken", idToken);
+        document.cookie = `adminToken=${idToken}; path=/; max-age=86400`;
         // Log the login action to Firebase audit logs
         await logLogin(
-          { uid: userCredential.user.uid, email: userCredential.user.email || email },
-          { method: 'email_password', timestamp: new Date().toISOString() }
+          {
+            uid: userCredential.user.uid,
+            email: userCredential.user.email || email,
+          },
+          { method: "email_password", timestamp: new Date().toISOString() },
         );
-        toast.success('Login successful! Redirecting...');
+        toast.success("Login successful! Redirecting...");
       }
     } catch (error: any) {
       // Handle Firebase auth errors with specific messages
-      let errorMessage = 'Login failed. Please try again.';
-      
+      let errorMessage = "Login failed. Please try again.";
+
       switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = '❌ No account found with this email address';
+        case "auth/user-not-found":
+          errorMessage = "❌ No account found with this email address";
           break;
-        case 'auth/wrong-password':
-          errorMessage = '❌ Incorrect password. Please try again';
+        case "auth/wrong-password":
+          errorMessage = "❌ Incorrect password. Please try again";
           break;
-        case 'auth/invalid-email':
-          errorMessage = '❌ Invalid email address format';
+        case "auth/invalid-email":
+          errorMessage = "❌ Invalid email address format";
           break;
-        case 'auth/user-disabled':
-          errorMessage = '❌ This account has been disabled';
+        case "auth/user-disabled":
+          errorMessage = "❌ This account has been disabled";
           break;
-        case 'auth/too-many-requests':
-          errorMessage = '⚠️ Too many failed login attempts. Please try again later';
+        case "auth/too-many-requests":
+          errorMessage =
+            "⚠️ Too many failed login attempts. Please try again later";
           break;
-        case 'auth/invalid-credential':
-          errorMessage = '❌ Invalid email or password';
+        case "auth/invalid-credential":
+          errorMessage = "❌ Invalid email or password";
           break;
-        case 'auth/network-request-failed':
-          errorMessage = '🌐 Network error. Please check your connection';
+        case "auth/network-request-failed":
+          errorMessage = "🌐 Network error. Please check your connection";
           break;
-        case 'auth/operation-not-allowed':
-          errorMessage = '❌ Email/password sign-in is not enabled';
+        case "auth/operation-not-allowed":
+          errorMessage = "❌ Email/password sign-in is not enabled";
           break;
-        case 'auth/weak-password':
-          errorMessage = '❌ Password is too weak';
+        case "auth/weak-password":
+          errorMessage = "❌ Password is too weak";
           break;
         default:
           if (error.message) {
             errorMessage = `❌ ${error.message}`;
           }
       }
-      
+
       toast.error(errorMessage, {
         duration: 4000,
         style: {
-          background: '#EF4444',
-          color: '#fff',
+          background: "#EF4444",
+          color: "#fff",
         },
       });
-      
-      console.error('Login error:', error);
+
+      console.error("Login error:", error);
       throw error;
     }
   };
@@ -179,24 +230,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isDevelopment) {
         // Log logout for dev mode
         await logLogout(
-          { uid: 'dev-admin-123', email: 'admin@dev.local' },
-          { method: 'dev_mode' }
+          { uid: "dev-admin-123", email: "admin@dev.local" },
+          { method: "dev_mode" },
         );
         setUser(null);
         setToken(null);
-        localStorage.removeItem('adminToken');
+        setDepartment(null);
+        localStorage.removeItem("adminToken");
         // Clear cookie
-        document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        toast.success('Logged out successfully');
-        window.location.href = '/login';
+        document.cookie =
+          "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        toast.success("Logged out successfully");
+        window.location.href = "/login";
         return;
       }
 
       // Log the logout action before signing out
       if (user) {
         await logLogout(
-          { uid: user.uid, email: user.email || 'unknown' },
-          { timestamp: new Date().toISOString() }
+          { uid: user.uid, email: user.email || "unknown" },
+          { timestamp: new Date().toISOString() },
         );
       }
 
@@ -204,26 +257,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If auth is not initialized, just clear local state
         setUser(null);
         setToken(null);
-        localStorage.removeItem('adminToken');
-        document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        toast.success('Logged out successfully');
-        window.location.href = '/login';
+        setDepartment(null);
+        localStorage.removeItem("adminToken");
+        document.cookie =
+          "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        toast.success("Logged out successfully");
+        window.location.href = "/login";
         return;
       }
 
       await signOut(auth);
       // Clear cookie
-      document.cookie = 'adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      toast.success('Logged out successfully');
-      window.location.href = '/login';
+      document.cookie =
+        "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      toast.success("Logged out successfully");
+      window.location.href = "/login";
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
   };
 
   const value: AuthContextType = {
     user,
     token,
+    department,
     login,
     logout,
     loading,

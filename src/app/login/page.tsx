@@ -47,6 +47,7 @@ const Login: React.FC = () => {
     setIsSubmitting(true);
     try {
       await login(data.email, data.password);
+      // Explicit redirect for production reliability
       router.push('/dashboard');
     } catch {
       // Error handling is done in the AuthContext

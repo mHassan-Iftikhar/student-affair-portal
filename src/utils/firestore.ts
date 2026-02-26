@@ -1,3 +1,38 @@
+// ...existing code...
+
+// updateEvent should be defined only once, after all imports
+/**
+ * Update an event document in Firestore.
+ * @param eventId The ID of the event to update.
+ * @param data The event data to update.
+ * @param imageData Optional image data (Base64Data).
+ */
+export const updateEvent = async (
+  eventId: string,
+  data: {
+    title: string;
+    content: string;
+    date: any;
+    time: any;
+    location: any;
+    category: any;
+    department: string;
+    isPublished: boolean;
+  },
+  imageData?: Base64Data,
+): Promise<void> => {
+  let imageUrl: string | undefined = undefined;
+  let imageMimeType: string | undefined = undefined;
+  if (imageData && imageData.data && imageData.mimeType) {
+    imageUrl = imageData.data; // Store only raw base64, no prefix
+    imageMimeType = imageData.mimeType;
+  }
+  await updateDocument("events", eventId, {
+    ...data,
+    ...(imageUrl ? { imageUrl } : {}),
+    ...(imageMimeType ? { imageMimeType } : {}),
+  });
+};
 import {
   collection,
   doc,
@@ -342,7 +377,7 @@ export const addLostAndFoundItem = async (data: {
   description: string;
   date: string;
   time: string;
-  imageLink: string;
+  imageUrl: string;
   isClaimed: boolean;
   createdBy: string;
   claimedBy?: string;
@@ -369,13 +404,13 @@ export const addEvent = async (
   },
   imageData?: Base64Data,
 ): Promise<string> => {
-  let imageUrl: string | undefined = undefined;
+  let image: string | undefined = undefined;
   if (imageData && imageData.data && imageData.mimeType) {
-    imageUrl = imageData.data; // Store only raw base64, no prefix
+    image = imageData.data; // Store only raw base64, no prefix
   }
   return await addDocument("events", {
     ...data,
-    ...(imageUrl ? { imageUrl } : {}),
+    ...(image ? { image } : {}),
   });
 };
 

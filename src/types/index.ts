@@ -8,27 +8,29 @@ export interface User {
   lastLoginAt?: string;
 }
 
-export interface Item {
-  imageLink: string | undefined;
-  _id: string;
-  id?: string;
-  title: string;
-  description: string;
-  price: number;
-  category: string;
-  imageUrl?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  reportType?: string;
-}
+// export interface Item {
+//   imageLink: string | undefined;
+//   _id: string;
+//   id?: string;
+//   title: string;
+//   description: string;
+//   price: number;
+//   category: string;
+//   imageUrl?: string;
+//   isActive: boolean;
+//   createdAt: string;
+//   updatedAt: string;
+//   reportType?: string;
+// }
 
-export interface Story {
+export interface Event {
   id: string;
   _id: string;
   title: string;
   content: string;
   imageUrl?: string;
+  image?: string;
+  imageMimeType?: string;
   videoUrl?: string;
   isPublished: boolean;
   createdAt: string;

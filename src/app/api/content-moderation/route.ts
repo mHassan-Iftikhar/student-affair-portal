@@ -91,7 +91,7 @@ async function analyzeImageWithGemini(
 }> {
   try {
     // Use model name from env or fallback to a known working model
-    const geminiModelName = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-pro-vision";
+    const geminiModelName = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-1.5-pro";
     const model = genAI.getGenerativeModel({ model: geminiModelName });
 
     const base64Data = imageUrl.split(",")[1] || imageUrl;
@@ -163,9 +163,12 @@ async function moderateWithHuggingFace(
 
   try {
     const model = "cardiffnlp/twitter-roberta-base-offensive";
-    const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+    const res = await fetch(`https://router.huggingface.co/models/${model}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.HUGGINGFACE_API_KEY ? { "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}` } : {})
+      },
       body: JSON.stringify({ inputs: fullText }),
     });
 

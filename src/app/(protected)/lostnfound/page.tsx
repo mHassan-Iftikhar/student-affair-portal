@@ -9,7 +9,28 @@ import {
   Upload,
   Image as ImageIcon,
 } from "lucide-react";
-import { Item } from "../../../types";
+// TODO: Replace this with import { Item } from "../../../types"; if 'Item' is exported from that file.
+type Item = {
+  _id?: string;
+  id?: string;
+  title: string;
+  description: string;
+  category: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  reportType?: string;
+  files?: {
+    image?: {
+      dataURL?: string;
+      data?: string;
+      mimeType?: string;
+      name?: string;
+    };
+  };
+};
+
 import Table from "../../../components/UI/Table";
 import Modal from "../../../components/UI/Modal";
 import LoadingSpinner from "../../../components/UI/LoadingSpinner";
@@ -72,13 +93,13 @@ const Items: React.FC = () => {
       // Use correct Firestore collection name and include reportType
       const firestoreItems = await getDocuments("lostNfound", constraints);
       const mappedItems = firestoreItems.map((item) => {
-        let imageLink = "";
+        let imageUrl = "";
         if (item.files?.image?.dataURL) {
-          imageLink = item.files.image.dataURL;
+          imageUrl = item.files.image.dataURL;
         } else if (item.imageUrl) {
-          imageLink = item.imageUrl;
-        } else if (item.imageLink) {
-          imageLink = item.imageLink;
+          imageUrl = item.imageUrl;
+        } else if (item.imageUrl) {
+          imageUrl = item.imageUrl;
         }
         return {
           _id: item.id || "",
@@ -87,7 +108,7 @@ const Items: React.FC = () => {
           description: item.description || "",
           // price removed
           category: item.category || "",
-          imageLink,
+          imageUrl,
           isActive: item.isActive !== false,
           createdAt: item.createdAt || new Date().toISOString(),
           updatedAt: item.updatedAt || new Date().toISOString(),
@@ -122,7 +143,7 @@ const Items: React.FC = () => {
     setValue("description", item.description);
     // setValue for price removed
     setValue("category", item.category);
-    setValue("imageLink", item.imageLink || item.imageUrl || "");
+    setValue("imageUrl", item.imageUrl || item.imageUrl || "");
 
     // Check if category is a predefined one or custom
     const predefinedCategories = [
@@ -257,7 +278,7 @@ const Items: React.FC = () => {
             description: data.description || editingItem.description || "",
             date: (data as any).date || new Date().toISOString().split("T")[0],
             time: (data as any).time || new Date().toLocaleTimeString(),
-            imageLink: imageData && imageData.data ? imageData.data : editingItem.imageLink || "",
+            imageUrl: imageData && imageData.data ? imageData.data : editingItem.imageUrl || "",
             isClaimed: false,
             createdBy: user?.email || "Admin",
             ...(finalCategory ? { category: finalCategory } : {}),
@@ -314,7 +335,7 @@ const Items: React.FC = () => {
           description: data.description || "",
           date: (data as any).date || new Date().toISOString().split("T")[0],
           time: (data as any).time || new Date().toLocaleTimeString(),
-          imageLink: imageData && imageData.data ? imageData.data : "",
+          imageUrl: imageData && imageData.data ? imageData.data : "",
           isClaimed: false,
           createdBy: user?.email || "Admin",
           ...(finalCategory ? { category: finalCategory } : {}),
@@ -378,14 +399,14 @@ const Items: React.FC = () => {
       },
     },
     {
-      key: "imageLink",
+      key: "imageUrl",
       header: "Image",
       render: (item: Item) => (
-        (item.imageLink || item.imageUrl) ? (
+        (item.imageUrl || item.imageUrl) ? (
           <button
             className="text-blue-600 hover:text-blue-900 underline"
             onClick={() => {
-              const rawBase64 = item.imageLink || item.imageUrl;
+              const rawBase64 = item.imageUrl || item.imageUrl;
               const imgSrc = rawBase64 ? buildImageUrl(rawBase64) : undefined;
               setSelectedImageUrl(imgSrc);
               setShowImageModal(true);
@@ -434,12 +455,12 @@ const Items: React.FC = () => {
                   setValue("title", item.title);
                   setValue("description", item.description);
                   setValue("category", item.category);
-                  setValue("imageLink", item.imageLink || item.imageUrl || "");
+                  setValue("imageUrl", item.imageUrl || item.imageUrl || "");
                   setValue("reportType", item.reportType || "Lost");
                   setSelectedCategory(item.category);
                   setCustomCategory("");
                   setSelectedFile(null);
-                  setPreviewUrl(item.imageLink || item.imageUrl || "");
+                  setPreviewUrl(item.imageUrl || item.imageUrl || "");
                   setIsModalOpen(true);
                   toast.success("Please update and save to publish this item again.");
                 }
@@ -626,10 +647,10 @@ const Items: React.FC = () => {
                   {selectedFile.name} ({formatFileSize(selectedFile.size)})
                 </p>
               </div>
-            ) : editingItem && (editingItem.imageLink || editingItem.imageUrl) ? (
+            ) : editingItem && (editingItem.imageUrl || editingItem.imageUrl) ? (
               <div className="mt-2">
                 <img
-                  src={buildImageUrl(editingItem.imageLink || editingItem.imageUrl || "")}
+                  src={buildImageUrl(editingItem.imageUrl || editingItem.imageUrl || "")}
                   alt="Current"
                   className="h-32 w-32 object-cover rounded-lg border"
                 />
